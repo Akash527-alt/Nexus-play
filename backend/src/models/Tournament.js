@@ -22,6 +22,11 @@ const tournamentSchema = new mongoose.Schema(
             require: [true, "Tournament description is required"],
             trim: true,
         },
+        rules: {
+            type: String,
+            required: [true, "Tournament rules are required"],
+            trim: true,
+        },
         venue: {
             type: String,
             required: [true, "Tournament venue is required"],

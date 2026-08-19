@@ -1,11 +1,11 @@
+import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
 import Tournament from "../models/Tournament.js";
 import ErrorHandler from "../utils/ErrorHandler.js";
-
+import APIFeatures from "../utils/apiFeatures.js";
 
 
 // create tournament -> /api/v1/tournaments
-export const createTournament = async (req, res, next) => {
-    try {
+export const createTournament = catchAsyncErrors( async (req, res, next) => {
         const {
             title,
             game,
@@ -57,33 +57,38 @@ export const createTournament = async (req, res, next) => {
             message: "Tournament created successfully",
             tournament
         });
-    } catch (err) {
-        next(err);
-    }
-}
+
+});
 
 // Get all tournaments => /api/v1/tournaments
+export const getAllTournaments = catchAsyncErrors(async (req, res, next) => {
 
-export const getAllTournaments = async (req, res, next) => {
-    try {
-        const tournaments = await Tournament.find();
+        const apiFilters = new APIFeatures(Tournament.find(), req.query).search().filter().dateFilter().sort();
+        const resPerPage = 4;
+
+        
+        const totalTournaments = await apiFilters.query.clone().countDocuments();
+        apiFilters.pagination(resPerPage)
+        
+        const tournaments = await apiFilters.query;
+        const currentPage = Number(req.query.page) || 1;
+        const totalPages = Math.ceil(totalTournaments / resPerPage);
 
         res.status(200).json({
+            success: true,
             count: tournaments.length,
+            totalTournaments,
+            currentPage,
+            totalPages,
             tournaments
         });
 
-    }
-    catch (err) {
-        next(err);
-    }
-}
+    
+});
 
 // get single tournament => /api/v1/tournaments/:id
-
-export const getTournament = async (req, res, next) => {
-    try {
-        const tournament = await    Tournament.findById(req?.params?.id);
+export const getTournament = catchAsyncErrors(async (req, res, next) => {
+        const tournament = await Tournament.findById(req?.params?.id);
 
         if (!tournament) {
             return next(new ErrorHandler("Tournament not available", 404));
@@ -93,7 +98,39 @@ export const getTournament = async (req, res, next) => {
             success: true,
             tournament
         });
-    }   catch(err){
-        next(err);
-    }
-}
+ 
+});
+
+// update tournament ->  PUT /api/v1/tournament/:id
+export const updateTournament =catchAsyncErrors( async (req, res, next) => {
+        const tournament = await Tournament.findById(req?.params?.id);
+
+        if (!tournament) {
+            return next(new ErrorHandler("tournament not found", 400));
+        }
+
+        const updateTournament = await Tournament.findByIdAndUpdate(req?.params?.id, req.body, { new: true, runValidators: true });
+
+
+        res.status(200).json({
+            success: true,
+            message: "Tournament updated Successfully",
+            tournament
+        });
+});
+
+// Delete tournament -> DELETE /api/v1/tournament/:id
+export const deleteTournament = catchAsyncErrors(async (req, res, next) => {
+        let tournament = Tournament.findById(req?.params?.id);
+
+        if (!tournament) {
+            return next(new ErrorHandler("tournament not found", 404));
+        }
+
+        await tournament.deleteOne();
+
+        res.status(200).json({
+            success: true,
+            message: "Tournament deleted successfully"
+        });
+})

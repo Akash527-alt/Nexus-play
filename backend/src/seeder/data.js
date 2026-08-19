@@ -4,6 +4,13 @@ const tournaments = [
         game: "Valorant",
         tournamentType: "team",
         description: "A competitive Valorant tournament for esports teams.",
+        rules: `
+        No cheating or unauthorized software is allowed.
+        Each team must have 5 players.
+        Players must check in 30 minutes before the match.
+        Toxic behavior may result in disqualification.
+        Match results cannot be changed after confirmation.
+    `,
         venue: "Mumbai Gaming Arena",
         startDate: "2026-09-15",
         endDate: "2026-09-16",
@@ -20,6 +27,13 @@ const tournaments = [
         game: "BGMI",
         tournamentType: "solo",
         description: "A solo BGMI tournament for individual players.",
+        rules: `
+        No cheating or unauthorized software is allowed.
+        Each team must have 5 players.
+        Players must check in 30 minutes before the match.
+        Toxic behavior may result in disqualification.
+        Match results cannot be changed after confirmation.
+    `,
         venue: "Pune Esports Center",
         startDate: "2026-09-20",
         endDate: "2026-09-20",
@@ -35,6 +49,13 @@ const tournaments = [
         game: "Free Fire",
         tournamentType: "team",
         description: "Team-based Free Fire esports competition.",
+        rules: `
+        No cheating or unauthorized software is allowed.
+        Each team must have 5 players.
+        Players must check in 30 minutes before the match.
+        Toxic behavior may result in disqualification.
+        Match results cannot be changed after confirmation.
+    `,
         venue: "Mumbai Esports Hub",
         startDate: "2026-10-05",
         endDate: "2026-10-06",
@@ -51,6 +72,13 @@ const tournaments = [
         game: "EA Sports FC",
         tournamentType: "solo",
         description: "One-versus-one competitive football gaming tournament.",
+        rules: `
+        No cheating or unauthorized software is allowed.
+        Each team must have 5 players.
+        Players must check in 30 minutes before the match.
+        Toxic behavior may result in disqualification.
+        Match results cannot be changed after confirmation.
+    `,
         venue: "Andheri Gaming Lounge",
         startDate: "2026-10-10",
         endDate: "2026-10-10",
@@ -66,6 +94,13 @@ const tournaments = [
         game: "Counter-Strike 2",
         tournamentType: "team",
         description: "Competitive CS2 tournament featuring team-based matches.",
+        rules: `
+        No cheating or unauthorized software is allowed.
+        Each team must have 5 players.
+        Players must check in 30 minutes before the match.
+        Toxic behavior may result in disqualification.
+        Match results cannot be changed after confirmation.
+    `,
         venue: "Bangalore Esports Arena",
         startDate: "2026-10-18",
         endDate: "2026-10-19",
@@ -82,6 +117,13 @@ const tournaments = [
         game: "Rocket League",
         tournamentType: "team",
         description: "Fast-paced Rocket League tournament for competitive teams.",
+        rules: `
+        No cheating or unauthorized software is allowed.
+        Each team must have 5 players.
+        Players must check in 30 minutes before the match.
+        Toxic behavior may result in disqualification.
+        Match results cannot be changed after confirmation.
+    `,
         venue: "Delhi Gaming Arena",
         startDate: "2026-11-01",
         endDate: "2026-11-02",
@@ -98,6 +140,13 @@ const tournaments = [
         game: "Valorant",
         tournamentType: "solo",
         description: "Individual Valorant competition for emerging players.",
+        rules: `
+        No cheating or unauthorized software is allowed.
+        Each team must have 5 players.
+        Players must check in 30 minutes before the match.
+        Toxic behavior may result in disqualification.
+        Match results cannot be changed after confirmation.
+    `,
         venue: "Navi Mumbai Gaming Zone",
         startDate: "2026-11-08",
         endDate: "2026-11-08",
@@ -113,6 +162,13 @@ const tournaments = [
         game: "PUBG",
         tournamentType: "team",
         description: "Competitive PUBG PC tournament for esports teams.",
+        rules: `
+        No cheating or unauthorized software is allowed.
+        Each team must have 5 players.
+        Players must check in 30 minutes before the match.
+        Toxic behavior may result in disqualification.
+        Match results cannot be changed after confirmation.
+    `,
         venue: "Hyderabad Gaming Arena",
         startDate: "2026-11-15",
         endDate: "2026-11-16",
@@ -129,6 +185,13 @@ const tournaments = [
         game: "Tekken 8",
         tournamentType: "solo",
         description: "One-on-one fighting game tournament.",
+        rules: `
+        No cheating or unauthorized software is allowed.
+        Each team must have 5 players.
+        Players must check in 30 minutes before the match.
+        Toxic behavior may result in disqualification.
+        Match results cannot be changed after confirmation.
+    `,
         venue: "Mumbai Fighting Game Arena",
         startDate: "2026-11-22",
         endDate: "2026-11-22",
@@ -144,6 +207,13 @@ const tournaments = [
         game: "League of Legends",
         tournamentType: "team",
         description: "Team-based League of Legends esports championship.",
+        rules: `
+        No cheating or unauthorized software is allowed.
+        Each team must have 5 players.
+        Players must check in 30 minutes before the match.
+        Toxic behavior may result in disqualification.
+        Match results cannot be changed after confirmation.
+    `,
         venue: "Chennai Esports Arena",
         startDate: "2026-12-05",
         endDate: "2026-12-06",
