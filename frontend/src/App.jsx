@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
 
 import { ThemeProvider } from './context/ThemeContext';
 import { OrganizerLayout } from './components/layout/OrganizerLayout';
@@ -16,6 +17,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <Router>
+        {/* Toast Notification Container */}
+        <Toaster position="top-right" richColors closeButton />
+
         <OrganizerLayout>
           <Routes>
             <Route path="/" element={<Navigate to="/organizer/dashboard" replace />} />

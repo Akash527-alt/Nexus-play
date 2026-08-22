@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { tournamentService } from '../../services/tournamentService';
 import { Plus, Trash2, ArrowLeft, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function CreateTournamentPage() {
   const navigate = useNavigate();
@@ -126,6 +127,11 @@ export function CreateTournamentPage() {
     }
 
     setErrors(newErrors);
+    
+    if (Object.keys(newErrors).length > 0) {
+      toast.error('Please fix validation errors before submitting.');
+    }
+    
     return Object.keys(newErrors).length === 0;
   };
 
@@ -154,11 +160,11 @@ export function CreateTournamentPage() {
 
     try {
       await tournamentService.create(payload);
-      alert(`Tournament successfully created as ${status}!`);
+      toast.success(`Tournament created successfully as ${status}!`);
       navigate('/organizer/tournaments');
     } catch (err) {
       console.error('Failed to save tournament:', err);
-      alert('Error creating tournament. Please try again.');
+      toast.error('Error creating tournament. Please try again.');
     }
   };
 
