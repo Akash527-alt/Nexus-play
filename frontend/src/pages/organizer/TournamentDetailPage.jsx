@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { tournamentService } from '../../services/tournamentService';
-import { ArrowLeft, Trophy, Calendar, MapPin, Users, IndianRupee, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, Trophy, Clock, Trash2, ShieldAlert } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function TournamentDetailPage() {
   const { id } = useParams();
@@ -10,100 +11,176 @@ export function TournamentDetailPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchDetails = async () => {
-      try {
-        const data = await tournamentService.getById(id);
-        setTournament(data);
-      } catch (err) {
-        console.error('Failed to fetch tournament:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDetails();
+    fetchDetail();
   }, [id]);
 
-  if (loading) return <div className="p-6 text-sm text-slate-500">Loading details...</div>;
-  if (!tournament) return <div className="p-6 text-sm text-rose-500">Tournament not found!</div>;
+  const fetchDetail = async () => {
+    try {
+      const data = await tournamentService.getById(id);
+      setTournament(data);
+    } catch (err) {
+      console.error('Error fetching detail:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm('Are you sure you want to delete this tournament?')) {
+      await tournamentService.delete(id);
+      toast.success('Tournament deleted successfully');
+      navigate('/organizer/tournaments');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="theme-card p-12 text-center rounded-2xl border">
+        <p className="text-sm theme-subtext">Loading tournament details...</p>
+      </div>
+    );
+  }
+
+  if (!tournament) {
+    return (
+      <div className="theme-card p-12 text-center rounded-2xl border space-y-3">
+        <h2 className="text-lg font-bold theme-text">Tournament Not Found</h2>
+        <button onClick={() => navigate('/organizer/tournaments')} className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 rounded-lg">
+          Back to Tournaments
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <button 
-        onClick={() => navigate(-1)} 
-        className="flex items-center gap-1 text-sm font-semibold text-slate-600 hover:text-slate-900 bg-white px-3 py-1.5 rounded-lg border border-slate-200 cursor-pointer"
-      >
-        <ArrowLeft className="w-4 h-4" /> Back
-      </button>
+      {/* Navigation & Header */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => navigate('/organizer/tournaments')}
+          className="theme-hover theme-text flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border cursor-pointer"
+          style={{ borderColor: 'var(--border-color)' }}
+        >
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
 
-      {/* Header Banner */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 space-y-4 shadow-xs">
-        <div className="flex justify-between items-start">
+        <button
+          onClick={handleDelete}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 rounded-lg cursor-pointer transition-colors"
+        >
+          <Trash2 className="w-4 h-4" /> Delete Event
+        </button>
+      </div>
+
+      {/* Main Info Card */}
+      <div className="theme-card p-6 rounded-2xl border shadow-xs space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b pb-4" style={{ borderColor: 'var(--border-color)' }}>
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
-              {tournament.game}
-            </span>
-            <h1 className="text-2xl font-bold text-slate-900 mt-2">{tournament.title}</h1>
-            <p className="text-xs text-slate-500 mt-1">{tournament.format} • {tournament.tournamentType}</p>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 bg-indigo-500/10 px-2.5 py-0.5 rounded-md">
+                {tournament.game}
+              </span>
+              <span className="text-xs theme-subtext">• {tournament.format || tournament.type}</span>
+            </div>
+            <h1 className="text-2xl font-extrabold theme-text mt-1">{tournament.title || tournament.name}</h1>
+            <p className="text-xs theme-subtext mt-1">{tournament.description || 'No description provided.'}</p>
           </div>
-          <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-700 capitalize">
-            {tournament.status}
+
+          <span className={`text-xs font-bold px-3 py-1 rounded-full capitalize ${
+            tournament.status?.toLowerCase() === 'upcoming'
+              ? 'bg-amber-500/10 text-amber-500'
+              : 'bg-emerald-500/10 text-emerald-500'
+          }`}>
+            {tournament.status || 'Upcoming'}
           </span>
         </div>
 
-        <p className="text-sm text-slate-600">{tournament.description || 'No description provided.'}</p>
-      </div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="p-3.5 rounded-xl border bg-indigo-500/5" style={{ borderColor: 'var(--border-color)' }}>
+            <span className="text-[10px] font-bold uppercase theme-subtext flex items-center gap-1">
+              <Trophy className="w-3.5 h-3.5 text-amber-500" /> Prize Pool
+            </span>
+            <p className="text-lg font-bold text-indigo-500 mt-1">₹{(Number(tournament.totalPrizePool) || 0).toLocaleString('en-IN')}</p>
+          </div>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80">
-          <p className="text-xs text-slate-400 font-bold uppercase">Prize Pool</p>
-          <p className="text-lg font-bold text-slate-900 flex items-center gap-1 mt-1">
-            <IndianRupee className="w-4 h-4 text-amber-500" /> ₹{(tournament.totalPrizePool || 0).toLocaleString('en-IN')}
-          </p>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80">
-          <p className="text-xs text-slate-400 font-bold uppercase">Slots / Teams</p>
-          <p className="text-lg font-bold text-slate-900 flex items-center gap-1 mt-1">
-            <Users className="w-4 h-4 text-emerald-500" /> {tournament.currentParticipants || 0} / {tournament.maxParticipants}
-          </p>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80">
-          <p className="text-xs text-slate-400 font-bold uppercase">Dates</p>
-          <p className="text-xs font-semibold text-slate-800 flex items-center gap-1 mt-2">
-            <Calendar className="w-3.5 h-3.5 text-blue-500" /> {tournament.startDate || 'TBD'}
-          </p>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80">
-          <p className="text-xs text-slate-400 font-bold uppercase">Venue</p>
-          <p className="text-xs font-semibold text-slate-800 flex items-center gap-1 mt-2">
-            <MapPin className="w-3.5 h-3.5 text-purple-500" /> {tournament.venue || 'Online'}
-          </p>
-        </div>
-      </div>
+          <div className="p-3.5 rounded-xl border bg-indigo-500/5" style={{ borderColor: 'var(--border-color)' }}>
+            <span className="text-[10px] font-bold uppercase theme-subtext flex items-center gap-1">
+              <Users className="w-3.5 h-3.5 text-indigo-500" /> Slots / Teams
+            </span>
+            <p className="text-lg font-bold theme-text mt-1">0 / {tournament.maxParticipants || 16}</p>
+          </div>
 
-      {/* Rules & Prizes breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/80">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-3">
-            <Trophy className="w-4 h-4 text-amber-500" /> Prize Distribution
+          <div className="p-3.5 rounded-xl border bg-indigo-500/5" style={{ borderColor: 'var(--border-color)' }}>
+            <span className="text-[10px] font-bold uppercase theme-subtext flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5 text-emerald-500" /> Venue
+            </span>
+            <p className="text-sm font-bold theme-text mt-1 line-clamp-1">{tournament.venue || 'Online'}</p>
+          </div>
+
+          <div className="p-3.5 rounded-xl border bg-indigo-500/5" style={{ borderColor: 'var(--border-color)' }}>
+            <span className="text-[10px] font-bold uppercase theme-subtext flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5 text-rose-500" /> Reg. Fee
+            </span>
+            <p className="text-sm font-bold theme-text mt-1">
+              {Number(tournament.entryFee || tournament.registrationFee) > 0 ? `₹${tournament.entryFee}` : 'Free Entry'}
+            </p>
+          </div>
+        </div>
+
+        {/* Schedule & Dates Section */}
+        <div className="p-4 rounded-xl border space-y-3" style={{ borderColor: 'var(--border-color)' }}>
+          <h3 className="text-xs font-bold uppercase tracking-wider theme-subtext flex items-center gap-1.5">
+            <Calendar className="w-4 h-4 text-indigo-500" /> Tournament Timeline
           </h3>
-          <ul className="space-y-2">
-            {tournament.prizes?.map((p, i) => (
-              <li key={i} className="flex justify-between text-xs border-b pb-1.5 text-slate-700">
-                <span>{p.position}</span>
-                <span className="font-bold">₹{Number(p.amount).toLocaleString('en-IN')}</span>
-              </li>
-            ))}
-          </ul>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="p-2.5 rounded-lg border bg-zinc-500/5" style={{ borderColor: 'var(--border-color)' }}>
+              <span className="theme-subtext block text-[10px] uppercase font-bold">Registration Deadline</span>
+              <span className="theme-text font-bold text-rose-500">{tournament.registrationDeadline || 'Not Set'}</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg border bg-zinc-500/5" style={{ borderColor: 'var(--border-color)' }}>
+              <span className="theme-subtext block text-[10px] uppercase font-bold">Start Date</span>
+              <span className="theme-text font-bold">{tournament.startDate || 'Not Set'}</span>
+            </div>
+
+            <div className="p-2.5 rounded-lg border bg-zinc-500/5" style={{ borderColor: 'var(--border-color)' }}>
+              <span className="theme-subtext block text-[10px] uppercase font-bold">End Date</span>
+              <span className="theme-text font-bold">{tournament.endDate || 'Not Set'}</span>
+            </div>
+          </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/80">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-3">
-            <ShieldCheck className="w-4 h-4 text-indigo-500" /> Rules
+        {/* Prize Pool Breakdown */}
+        <div>
+          <h3 className="text-sm font-bold theme-text mb-3">Prize Distribution</h3>
+          {tournament.prizes && tournament.prizes.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {tournament.prizes.map((p, idx) => (
+                <div key={idx} className="flex justify-between items-center p-3 rounded-lg border text-xs" style={{ borderColor: 'var(--border-color)' }}>
+                  <span className="font-semibold theme-text">{p.position}</span>
+                  <span className="font-bold text-emerald-500">₹{(Number(p.amount) || 0).toLocaleString('en-IN')}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs theme-subtext">No breakdown configured.</p>
+          )}
+        </div>
+
+        {/* Rules */}
+        <div>
+          <h3 className="text-sm font-bold theme-text mb-2 flex items-center gap-1">
+            <ShieldAlert className="w-4 h-4 text-indigo-500" /> Rules & Regulations
           </h3>
-          <p className="text-xs text-slate-600 whitespace-pre-line leading-relaxed">
-            {tournament.rules || 'No custom rules set.'}
-          </p>
+          <div className="p-3.5 rounded-xl border text-xs theme-subtext space-y-1.5" style={{ borderColor: 'var(--border-color)' }}>
+            {typeof tournament.rules === 'string'
+              ? tournament.rules.split('\n').map((r, i) => <p key={i}>• {r}</p>)
+              : Array.isArray(tournament.rules)
+              ? tournament.rules.map((r, i) => <p key={i}>• {r}</p>)
+              : <p>Standard fair play rules apply.</p>}
+          </div>
         </div>
       </div>
     </div>
