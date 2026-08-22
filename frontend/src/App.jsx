@@ -1,25 +1,32 @@
-import React, { useState } from 'react';
-import { OrganizerNavbar } from './components/layout/OrganizerNavbar';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
+// Pages
 import { DashboardPage } from './pages/organizer/DashboardPage';
+import { TournamentsPage } from './pages/organizer/TournamentsPage';
+import { CreateTournamentPage } from './pages/organizer/CreateTournamentPage';
+import { TournamentDetailPage } from './pages/organizer/TournamentDetailPage';
 
 export default function App() {
-  // Mobile side drawer ke state handle krne ke liye variable banaya h
-  const [navOpen, setNavOpen] = useState(false);
-
-  // Jab navbar ka hamburger click krenge to ye chalega
-  const handleMenuToggle = () => {
-    setNavOpen(!navOpen);
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Top Navbar display kr rhe h */}
-      <OrganizerNavbar onMenuToggle={handleMenuToggle} />
+    <Router>
+      <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
+        <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+          <Routes>
+            {/* Redirect root to organizer dashboard */}
+            <Route path="/" element={<Navigate to="/organizer/dashboard" replace />} />
+            
+            {/* Organizer Routes */}
+            <Route path="/organizer/dashboard" element={<DashboardPage />} />
+            <Route path="/organizer/tournaments" element={<TournamentsPage />} />
+            <Route path="/organizer/tournaments/create" element={<CreateTournamentPage />} />
+            <Route path="/organizer/tournaments/:id" element={<TournamentDetailPage />} />
 
-      {/* Main content ka container jidhar abhi apna Dashboard render hoga */}
-      <main className="p-6 max-w-6xl mx-auto w-full flex-1">
-        <DashboardPage />
-      </main>
-    </div>
+            {/* Catch-all fallback */}
+            <Route path="*" element={<Navigate to="/organizer/dashboard" replace />} />
+          </Routes>
+        </div>
+      </div>
+    </Router>
   );
 }
