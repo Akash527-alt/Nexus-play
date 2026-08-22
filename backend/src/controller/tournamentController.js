@@ -1,5 +1,5 @@
 import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
-import Tournament from "../models/Tournament.js";
+import Tournament from "../models/tournament.js";
 import ErrorHandler from "../utils/ErrorHandler.js";
 import APIFeatures from "../utils/apiFeatures.js";
 
@@ -37,7 +37,6 @@ export const createTournament = catchAsyncErrors( async (req, res, next) => {
         }
 
         const tournament = await Tournament.create({
-            title, game,
             title,
             game,
             tournamentType,
@@ -115,13 +114,13 @@ export const updateTournament =catchAsyncErrors( async (req, res, next) => {
         res.status(200).json({
             success: true,
             message: "Tournament updated Successfully",
-            tournament
+            updateTournament
         });
 });
 
 // Delete tournament -> DELETE /api/v1/tournament/:id
 export const deleteTournament = catchAsyncErrors(async (req, res, next) => {
-        let tournament = Tournament.findById(req?.params?.id);
+        let tournament = await Tournament.findById(req?.params?.id);
 
         if (!tournament) {
             return next(new ErrorHandler("tournament not found", 404));
