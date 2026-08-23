@@ -167,3 +167,34 @@ export const resetPassword = catchAsyncErrors(async (req, res, next) => {
 
     sendToken(user, 200, res);
 });
+
+// Register an organizer -> /api/v1/auth/organizer/register
+export const registerOrganizer = catchAsyncErrors(async (req, res, next) => {
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+        return next(
+            new ErrorHandler(
+                "Please provide name, email and password",
+                400
+            )
+        );
+    }
+
+    const existingUser = await User.findOne({ email });
+
+    if (existingUser) {
+        return next(
+            new ErrorHandler("User already exists", 400)
+        );
+    }
+
+    const user = await User.create({
+        name,
+        email,
+        password,
+        role: "organizer",
+    });
+
+    sendToken(user, 201, res);
+});

@@ -4,6 +4,7 @@ import ErrorHandler from './utils/ErrorHandler.js';
 import tournamentRoutes from './routes/tournamentRoutes.js'
 import authRoutes from './routes/authRoutes.js'
 import cookieParser from 'cookie-parser'
+import organizerRoutes from './routes/organizerRoutes.js'
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.set('query parser', 'extended');
 
 app.use("/api/v1/tournaments",tournamentRoutes);
 app.use("/api/v1/auth",authRoutes);
+app.use("/api/v1/organizer", organizerRoutes);
 
 
 

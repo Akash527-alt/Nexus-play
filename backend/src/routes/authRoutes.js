@@ -1,16 +1,20 @@
 import express from 'express';
-import { changePassword, forgotPassword, getUserProfile, loginUser, logoutUser, registerUser, resetPassword } from '../controller/authController.js';
-import {isAuthenticatedUser} from '../middleware/auth.js';
+import { changePassword, forgotPassword, getUserProfile, loginUser, logoutUser, registerOrganizer, registerUser, resetPassword } from '../controller/authController.js';
+import { isAuthenticatedUser } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// user routes
 router.route("/register").post(registerUser);
 router.route("/login").post(loginUser);
-router.route("/me").post(isAuthenticatedUser,getUserProfile)
+router.route("/me").get(isAuthenticatedUser, getUserProfile)
 router.route("/logout").get(logoutUser)
-router.route("/password/update").put(isAuthenticatedUser,changePassword);
+router.route("/password/update").put(isAuthenticatedUser, changePassword);
 router.route("/password/forgot").post(forgotPassword);
 router.route("/password/reset/:token").put(resetPassword);
 
+// organizer routes
+
+router.route("/organizer/register").post(registerOrganizer);
 
 export default router;

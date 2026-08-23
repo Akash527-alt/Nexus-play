@@ -2,61 +2,83 @@ import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
 import Tournament from "../models/tournament.js";
 import ErrorHandler from "../utils/ErrorHandler.js";
 import APIFeatures from "../utils/apiFeatures.js";
+import Organizer from "../models/organizer.js";
 
 
 // create tournament -> /api/v1/tournaments
-export const createTournament = catchAsyncErrors( async (req, res, next) => {
-        const {
-            title,
-            game,
-            tournamentType,
-            description,
-            venue,
-            startDate,
-            endDate,
-            registrationDeadline,
-            entryFee,
-            maxParticipants,
-            teamSize
-        } = req.body;
+export const createTournament = catchAsyncErrors(async (req, res, next) => {
+    const {
+        title,
+        game,
+        tournamentType,
+        description,
+        rules,
+        venue,
+        startDate,
+        endDate,
+        registrationDeadline,
+        entryFee,
+        prizePool,
+        prizes,
+        maxParticipants,
+        teamSize,
+    } = req.body;
 
+    if (tournamentType === "team" && !teamSize) {
+        return next(
+            new ErrorHandler(
+                "Team size is required for team tournaments",
+                400
+            )
+        );
+    }
 
-        if (tournamentType === 'team' && !teamSize) {
-            return (
-                next(new ErrorHandler("Team size is required for team tournaments", 400))
-            );
-        }
+    if (tournamentType === "solo" && teamSize) {
+        return next(
+            new ErrorHandler(
+                "Team size is not required for solo tournaments",
+                400
+            )
+        );
+    }
 
-        if (tournamentType === "solo" && teamSize) {
-            return next(
-                new ErrorHandler(
-                    "Team size is not required for solo tournaments",
-                    400
-                )
-            );
-        }
+    const organizer = await Organizer.findOne({
+        userId: req.user._id,
+    });
 
-        const tournament = await Tournament.create({
-            title,
-            game,
-            tournamentType,
-            description,
-            venue,
-            startDate,
-            endDate,
-            registrationDeadline,
-            entryFee,
-            maxParticipants,
-            currentParticipants: 0,
-            teamSize
-        })
+    if (!organizer) {
+        return next(
+            new ErrorHandler(
+                "Organizer profile not found",
+                404
+            )
+        );
+    }
 
-        res.status(201).json({
-            success: true,
-            message: "Tournament created successfully",
-            tournament
-        });
+    const tournament = await Tournament.create({
+        title,
+        game,
+        tournamentType,
+        description,
+        rules,
+        venue,
+        startDate,
+        endDate,
+        registrationDeadline,
+        entryFee,
+        prizePool,
+        prizes,
+        maxParticipants,
+        currentParticipants: 0,
+        teamSize,
+        organizer: organizer._id,
+    });
 
+    res.status(201).json({
+        success: true,
+        message: "Tournament created successfully",
+        tournament,
+    });
 });
 
 // Get all tournaments => /api/v1/tournaments
@@ -101,35 +123,101 @@ export const getTournament = catchAsyncErrors(async (req, res, next) => {
 });
 
 // update tournament ->  PUT /api/v1/tournament/:id
-export const updateTournament =catchAsyncErrors( async (req, res, next) => {
-        const tournament = await Tournament.findById(req?.params?.id);
+export const updateTournament = catchAsyncErrors(async (req, res, next) => {
+    const tournament = await Tournament.findById(req.params.id);
 
-        if (!tournament) {
-            return next(new ErrorHandler("tournament not found", 400));
+    if (!tournament) {
+        return next(new ErrorHandler("Tournament not found", 404));
+    }
+
+    const organizer = await Organizer.findOne({
+        userId: req.user._id,
+    });
+
+    if (!organizer) {
+        return next(new ErrorHandler("Organizer profile not found", 404));
+    }
+
+    if (tournament.organizer.toString() !== organizer._id.toString()) {
+        return next(
+            new ErrorHandler(
+                "You are not allowed to update this tournament",
+                403
+            )
+        );
+    }
+
+    const allowedFields = [
+        "title",
+        "game",
+        "tournamentType",
+        "description",
+        "rules",
+        "venue",
+        "startDate",
+        "endDate",
+        "registrationDeadline",
+        "entryFee",
+        "prizePool",
+        "prizes",
+        "maxParticipants",
+        "teamSize",
+        "status",
+    ];
+
+    const updates = {};
+
+    for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+            updates[field] = req.body[field];
         }
+    }
 
-        const updateTournament = await Tournament.findByIdAndUpdate(req?.params?.id, req.body, { new: true, runValidators: true });
+    const updatedTournament = await Tournament.findByIdAndUpdate(
+        req.params.id,
+        updates,
+        {
+            new: true,
+            runValidators: true,
+        }
+    );
 
-
-        res.status(200).json({
-            success: true,
-            message: "Tournament updated Successfully",
-            updateTournament
-        });
+    res.status(200).json({
+        success: true,
+        message: "Tournament updated successfully",
+        tournament: updatedTournament,
+    });
 });
 
 // Delete tournament -> DELETE /api/v1/tournament/:id
 export const deleteTournament = catchAsyncErrors(async (req, res, next) => {
-        let tournament = await Tournament.findById(req?.params?.id);
+    const tournament = await Tournament.findById(req.params.id);
 
-        if (!tournament) {
-            return next(new ErrorHandler("tournament not found", 404));
-        }
+    if (!tournament) {
+        return next(new ErrorHandler("Tournament not found", 404));
+    }
 
-        await tournament.deleteOne();
+    const organizer = await Organizer.findOne({
+        userId: req.user._id,
+    });
 
-        res.status(200).json({
-            success: true,
-            message: "Tournament deleted successfully"
-        });
-})
+    if (!organizer) {
+        return next(new ErrorHandler("Organizer profile not found", 404));
+    }
+
+    if (tournament.organizer.toString() !== organizer._id.toString()) {
+        return next(
+            new ErrorHandler(
+                "You are not allowed to delete this tournament",
+                403
+            )
+        );
+    }
+
+    await tournament.deleteOne();
+
+    res.status(200).json({
+        success: true,
+        message: "Tournament deleted successfully",
+    });
+});
