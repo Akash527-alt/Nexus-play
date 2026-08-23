@@ -5,8 +5,18 @@ import tournamentRoutes from './routes/tournamentRoutes.js'
 import authRoutes from './routes/authRoutes.js'
 import cookieParser from 'cookie-parser'
 import organizerRoutes from './routes/organizerRoutes.js'
+import cors from 'cors'
 
 const app = express();
+
+
+// 
+app.use(
+    cors({
+        origin: "http://localhost:5173",
+        credentials: true,
+    })
+);
 
 // middleware
 app.use(express.json());

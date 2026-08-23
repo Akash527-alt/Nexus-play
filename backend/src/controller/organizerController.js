@@ -4,6 +4,11 @@ import ErrorHandler from "../utils/ErrorHandler.js";
 
 export const createOrganizerProfile = catchAsyncErrors(
     async (req, res, next) => {
+
+        console.log("1. createOrganizerProfile reached");
+        console.log("2. req.user:", req.user?._id, req.user?.role);
+        console.log("3. req.body:", req.body);
+
         const {
             organizationName,
             organizationType,
@@ -12,6 +17,8 @@ export const createOrganizerProfile = catchAsyncErrors(
             contactEmail,
             contactPhone,
         } = req.body;
+
+        console.log("4. Body destructured");
 
         if (
             !organizationName ||
@@ -28,6 +35,8 @@ export const createOrganizerProfile = catchAsyncErrors(
             );
         }
 
+        console.log("5. Required fields passed");
+
         if (req.user.role !== "organizer") {
             return next(
                 new ErrorHandler(
@@ -37,9 +46,14 @@ export const createOrganizerProfile = catchAsyncErrors(
             );
         }
 
+        console.log("6. Organizer role confirmed");
+
         const existingOrganizer = await Organizer.findOne({
             userId: req.user._id,
         });
+
+        console.log("7. Organizer findOne completed");
+        console.log("Existing organizer:", existingOrganizer);
 
         if (existingOrganizer) {
             return next(
@@ -49,6 +63,8 @@ export const createOrganizerProfile = catchAsyncErrors(
                 )
             );
         }
+
+        console.log("8. Creating organizer");
 
         const organizer = await Organizer.create({
             organizerId: `ORG-${Date.now()}`,
@@ -60,6 +76,8 @@ export const createOrganizerProfile = catchAsyncErrors(
             contactEmail,
             contactPhone,
         });
+
+        console.log("9. Organizer created:", organizer._id);
 
         res.status(201).json({
             success: true,

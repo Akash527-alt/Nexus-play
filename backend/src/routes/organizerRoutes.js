@@ -7,8 +7,8 @@ const router = express.Router();
 
 router.post(
     "/profile",
-    authorizeRoles,
     isAuthenticatedUser,
+    authorizeRoles("organizer"),
     createOrganizerProfile
 );
 
