@@ -8,7 +8,17 @@ import {
 import { Toaster } from "sonner";
 
 import { ThemeProvider } from "./context/ThemeContext";
+import { AuthProvider } from "./context/AuthContext";
+
+// Layouts
 import { OrganizerLayout } from "./components/layout/OrganizerLayout";
+import { ParticipantLayout } from "./components/layout/ParticipantLayout";
+
+// Auth Pages
+import { LoginPage } from "./pages/auth/LoginPage";
+import { RegisterPage } from "./pages/auth/RegisterPage.jsx";
+import { OrganizerRegisterPage } from "./pages/auth/OrganizerRegisterPage";
+import { OrganizerProfilePage } from "./pages/auth/OrganizerProfilePage";
 
 // Organizer Pages
 import { DashboardPage } from "./pages/organizer/DashboardPage";
@@ -17,14 +27,13 @@ import { CreateTournamentPage } from "./pages/organizer/CreateTournamentPage";
 import { TournamentDetailPage } from "./pages/organizer/TournamentDetailPage";
 import { ProfilePage } from "./pages/organizer/ProfilePage";
 import { SettingsPage } from "./pages/organizer/SettingsPage";
-import { AuthProvider } from "./context/AuthContext";
-import { LoginPage } from "./pages/auth/LoginPage";
-import { RegisterPage } from "./pages/auth/RegisterPage.jsx";
-import { OrganizerRegisterPage } from "./pages/auth/OrganizerRegisterPage";
-import { OrganizerProfilePage } from "./pages/auth/OrganizerProfilePage";
 
-// Participant / Student Page
+// Participant / Student Pages
 import { ParticipantDashboard } from "./pages/participant/ParticipantDashboard";
+import { ParticipantTournaments } from "./pages/participant/ParticipantTournaments";
+import { ParticipantHistory } from "./pages/participant/ParticipantHistory";
+import { ParticipantProfilePage } from "./pages/participant/ProfilePage";
+import { ParticipantSettingsPage } from "./pages/participant/SettingsPage";
 
 function App() {
   return (
@@ -41,14 +50,31 @@ function App() {
               path="/register/organizer"
               element={<OrganizerRegisterPage />}
             />
-
             <Route
               path="/register/organizer/profile"
               element={<OrganizerProfilePage />}
             />
 
-            {/* ================= PARTICIPANT / STUDENT ROUTE ================= */}
-            <Route path="/participant" element={<ParticipantDashboard />} />
+            {/* ================= PARTICIPANT / STUDENT ROUTES ================= */}
+            <Route
+              path="/participant/*"
+              element={
+                <ParticipantLayout>
+                  <Routes>
+                    <Route path="dashboard" element={<ParticipantDashboard />} />
+                    <Route path="tournaments" element={<ParticipantTournaments />} />
+                    <Route path="history" element={<ParticipantHistory />} />
+                    <Route path="profile" element={<ParticipantProfilePage />} />
+                    <Route path="settings" element={<ParticipantSettingsPage />} />
+
+                    <Route
+                      path="*"
+                      element={<Navigate to="/participant/dashboard" replace />}
+                    />
+                  </Routes>
+                </ParticipantLayout>
+              }
+            />
 
             {/* ================= ORGANIZER ROUTES ================= */}
             <Route
@@ -57,23 +83,17 @@ function App() {
                 <OrganizerLayout>
                   <Routes>
                     <Route path="dashboard" element={<DashboardPage />} />
-
                     <Route path="tournaments" element={<TournamentsPage />} />
-
                     <Route
                       path="tournaments/create"
                       element={<CreateTournamentPage />}
                     />
-
                     <Route
                       path="tournaments/:id"
                       element={<TournamentDetailPage />}
                     />
-
                     <Route path="profile" element={<ProfilePage />} />
-
                     <Route path="settings" element={<SettingsPage />} />
-
                     <Route
                       path="history"
                       element={
@@ -81,14 +101,12 @@ function App() {
                           <h1 className="text-xl font-bold theme-text">
                             Tournament History
                           </h1>
-
                           <p className="text-sm theme-subtext">
                             View completed and past esports events.
                           </p>
                         </div>
                       }
                     />
-
                     <Route
                       path="sponsors"
                       element={
@@ -96,14 +114,12 @@ function App() {
                           <h1 className="text-xl font-bold theme-text">
                             Sponsors Management
                           </h1>
-
                           <p className="text-sm theme-subtext">
                             Manage brand partnerships and tournament sponsors.
                           </p>
                         </div>
                       }
                     />
-
                     <Route
                       path="*"
                       element={<Navigate to="/organizer/dashboard" replace />}
@@ -112,10 +128,10 @@ function App() {
                 </OrganizerLayout>
               }
             />
-            {/* ================= ROOT ================= */}
-            <Route path="/" element={<Navigate to="/participant" replace />} />
-            {/* ================= FALLBACK ================= */}
-            <Route path="*" element={<Navigate to="/participant" replace />} />
+
+            {/* ================= ROOT & FALLBACK ================= */}
+            <Route path="/" element={<Navigate to="/participant/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/participant/dashboard" replace />} />
           </Routes>
         </Router>
       </AuthProvider>
