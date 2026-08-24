@@ -23,6 +23,9 @@ import { RegisterPage } from "./pages/auth/RegisterPage.jsx";
 import { OrganizerRegisterPage } from "./pages/auth/OrganizerRegisterPage";
 import { OrganizerProfilePage } from "./pages/auth/OrganizerProfilePage";
 
+// Participant / Student Page
+import { ParticipantDashboard } from "./pages/participant/ParticipantDashboard";
+
 function App() {
   return (
     <ThemeProvider>
@@ -43,6 +46,10 @@ function App() {
               path="/register/organizer/profile"
               element={<OrganizerProfilePage />}
             />
+
+            {/* ================= PARTICIPANT / STUDENT ROUTE ================= */}
+            <Route path="/participant" element={<ParticipantDashboard />} />
+
             {/* ================= ORGANIZER ROUTES ================= */}
             <Route
               path="/organizer/*"
@@ -106,9 +113,9 @@ function App() {
               }
             />
             {/* ================= ROOT ================= */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/" element={<Navigate to="/participant" replace />} />
             {/* ================= FALLBACK ================= */}
-            <Route path="*" element={<Navigate to="/login" replace />} />
+            <Route path="*" element={<Navigate to="/participant" replace />} />
           </Routes>
         </Router>
       </AuthProvider>
