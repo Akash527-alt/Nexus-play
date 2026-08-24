@@ -33,6 +33,10 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+.theme-bg {
+  background-color: var(--bg-main) !important;
+}
+
 .theme-card {
   background-color: var(--bg-card) !important;
   border-color: var(--border-color) !important;
@@ -52,6 +56,10 @@ body {
 
 .theme-icon-box {
   background-color: var(--bg-icon-box) !important;
+  border-color: var(--border-color) !important;
+}
+
+.theme-border {
   border-color: var(--border-color) !important;
 }
 

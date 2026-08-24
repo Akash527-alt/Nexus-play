@@ -1,31 +1,42 @@
 import React from "react";
 
 export const ParticipantHistory = () => {
-  const history = [
-    { id: "101", title: "Overwatch Cyber Cup", date: "2026-08-10", mode: "online", status: "Won", prize: "₹2,000", position: "1st Place" },
-    { id: "102", title: "EA FC 26 FIFA Night", date: "2026-07-20", mode: "offline", status: "Lost", prize: "Runner Up", position: "2nd Place" }
+  const historyData = [
+    { id: "1", tournament: "BGMI Campus Cup", date: "2026-08-10", position: "1st Place 🏆", prize: "₹2,500" },
+    { id: "2", tournament: "Valorant Masters", date: "2026-07-28", position: "3rd Place 🥉", prize: "₹500" },
+    { id: "3", tournament: "Tekken 8 Clash", date: "2026-07-15", position: "Runner Up 🥈", prize: "₹1,500" },
   ];
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-      <div className="p-5 border-b border-slate-800 font-bold text-sm text-slate-200">
-        Match History Ledger
+    <div className="w-full space-y-6">
+      <div className="theme-card border theme-border p-6 rounded-2xl shadow-xs w-full">
+        <h1 className="text-xl font-bold theme-text">Match History Ledger</h1>
+        <p className="text-xs theme-subtext mt-1">Review your completed tournaments and earned prize amounts.</p>
       </div>
-      <div className="divide-y divide-slate-800">
-        {history.map((h) => (
-          <div key={h.id} className="p-5 flex justify-between items-center hover:bg-slate-800/30 transition">
-            <div>
-              <h4 className="font-bold text-xs text-slate-200">{h.title}</h4>
-              <p className="text-[10px] text-slate-400 mt-1">{h.date} • {h.mode.toUpperCase()}</p>
-            </div>
-            <div className="text-right">
-              <span className={`text-[10px] font-black px-3 py-1 rounded-full ${h.status === "Won" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"}`}>
-                {h.position}
-              </span>
-              <p className="text-[10px] text-slate-400 mt-1">Reward: {h.prize}</p>
-            </div>
-          </div>
-        ))}
+
+      <div className="theme-card border theme-border rounded-2xl overflow-hidden shadow-xs w-full">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b theme-border theme-icon-box text-[11px] font-bold theme-subtext uppercase">
+                <th className="p-4">Tournament</th>
+                <th className="p-4">Date</th>
+                <th className="p-4">Result</th>
+                <th className="p-4 text-right">Prize Earned</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y theme-border text-xs theme-text">
+              {historyData.map((item) => (
+                <tr key={item.id} className="theme-hover transition">
+                  <td className="p-4 font-bold">{item.tournament}</td>
+                  <td className="p-4 theme-subtext">{item.date}</td>
+                  <td className="p-4 font-semibold text-indigo-500">{item.position}</td>
+                  <td className="p-4 text-right font-bold text-emerald-500">{item.prize}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

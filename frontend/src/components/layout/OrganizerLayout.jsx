@@ -7,15 +7,21 @@ import {
   CheckCircle,
   Info,
   AlertTriangle,
+  Menu,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 
 export function OrganizerLayout({ children }) {
   const navigate = useNavigate();
-  // const location = useLocation();
-
   const { user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+
+  // Sidebar hidden by default
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -51,11 +57,6 @@ export function OrganizerLayout({ children }) {
     },
   ]);
 
-  // const [userProfile, setUserProfile] = useState({
-  //   name: 'Organizer Pro',
-  //   email: 'organizer@nexusplay.gg'
-  // });
-
   const searchableItems = [
     {
       type: "Tournament",
@@ -79,24 +80,6 @@ export function OrganizerLayout({ children }) {
             item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.type.toLowerCase().includes(searchQuery.toLowerCase()),
         );
-
-  // const refreshProfileData = () => {
-  //   const saved = localStorage.getItem('organizer_profile');
-  //   if (saved) {
-  //     try {
-  //       const parsed = JSON.parse(saved);
-  //       if (parsed.name && parsed.email) {
-  //         setUserProfile({ name: parsed.name, email: parsed.email });
-  //       }
-  //     } catch (e) {
-  //       console.error(e);
-  //     }
-  //   }
-  // };
-
-  // useEffect(() => {
-  //   refreshProfileData();
-  // }, [location.pathname]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -125,71 +108,100 @@ export function OrganizerLayout({ children }) {
   const hasUnread = notifications.some((n) => n.unread);
 
   return (
-    <div className="flex min-h-screen w-full transition-colors duration-200">
-      <OrganizerSidebar />
+    <div className="flex min-h-screen w-full transition-colors duration-200 theme-bg theme-text">
+      
+      {/* Conditionally Rendered Separate Sidebar */}
+      {isSidebarOpen && (
+        <div className="shrink-0 transition-all duration-300 z-40">
+          <OrganizerSidebar />
+        </div>
+      )}
 
       <div className="flex-1 flex flex-col min-w-0 w-full overflow-x-hidden">
         {/* Top Header Navbar */}
-        <header className="theme-header h-16 border-b px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs">
-          {/* Functional Search Bar */}
-          <div className="relative w-72" ref={searchRef}>
-            <Search className="w-4 h-4 theme-subtext absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setIsSearchOpen(true);
-              }}
-              onFocus={() => setIsSearchOpen(true)}
-              placeholder="Search tournaments, pages..."
-              className="theme-input w-full pl-9 pr-8 py-1.5 text-xs border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20"
-            />
-            {searchQuery && (
-              <X
-                onClick={() => setSearchQuery("")}
-                className="w-3.5 h-3.5 theme-subtext hover:opacity-100 absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer"
-              />
-            )}
+        <header className="theme-header h-16 border-b theme-border px-4 md:px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs">
+          
+          {/* Left Side: Hamburger & Search */}
+          <div className="flex items-center gap-3">
+            {/* Hamburger Toggle */}
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-2 theme-icon-box border theme-border rounded-lg text-sm theme-text hover:bg-purple-500/10 transition cursor-pointer"
+              title="Toggle Sidebar"
+            >
+              <Menu className="w-4 h-4" />
+            </button>
 
-            {/* Search Dropdown */}
-            {isSearchOpen && searchQuery.trim().length > 0 && (
-              <div className="theme-card absolute top-full left-0 mt-2 w-80 border rounded-xl shadow-lg p-2 z-50">
-                <p className="text-[10px] font-bold theme-subtext uppercase px-2 py-1">
-                  Search Results
-                </p>
-                {filteredSearch.length > 0 ? (
-                  <div className="space-y-1">
-                    {filteredSearch.map((item, idx) => (
-                      <div
-                        key={idx}
-                        onClick={() => {
-                          navigate(item.link);
-                          setIsSearchOpen(false);
-                          setSearchQuery("");
-                        }}
-                        className="theme-hover p-2 rounded-lg cursor-pointer flex items-center justify-between"
-                      >
-                        <span className="text-xs font-semibold theme-text">
-                          {item.name}
-                        </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-600 text-white font-bold">
-                          {item.type}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs theme-subtext p-2 text-center">
-                    No matching results found.
+            {/* Functional Search Bar */}
+            <div className="relative w-48 md:w-72" ref={searchRef}>
+              <Search className="w-4 h-4 theme-subtext absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsSearchOpen(true);
+                }}
+                onFocus={() => setIsSearchOpen(true)}
+                placeholder="Search tournaments, pages..."
+                className="theme-input w-full pl-9 pr-8 py-1.5 text-xs border theme-border rounded-lg outline-none focus:ring-2 focus:ring-purple-500/20 bg-transparent"
+              />
+              {searchQuery && (
+                <X
+                  onClick={() => setSearchQuery("")}
+                  className="w-3.5 h-3.5 theme-subtext hover:opacity-100 absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer"
+                />
+              )}
+
+              {/* Search Dropdown */}
+              {isSearchOpen && searchQuery.trim().length > 0 && (
+                <div className="theme-card absolute top-full left-0 mt-2 w-80 border theme-border rounded-xl shadow-lg p-2 z-50">
+                  <p className="text-[10px] font-bold theme-subtext uppercase px-2 py-1">
+                    Search Results
                   </p>
-                )}
-              </div>
-            )}
+                  {filteredSearch.length > 0 ? (
+                    <div className="space-y-1">
+                      {filteredSearch.map((item, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => {
+                            navigate(item.link);
+                            setIsSearchOpen(false);
+                            setSearchQuery("");
+                          }}
+                          className="theme-hover p-2 rounded-lg cursor-pointer flex items-center justify-between"
+                        >
+                          <span className="text-xs font-semibold theme-text">
+                            {item.name}
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-purple-600 text-white font-bold">
+                            {item.type}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs theme-subtext p-2 text-center">
+                      No matching results found.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Header Actions */}
-          <div className="flex items-center gap-4">
+          {/* Right Side: Theme, Notifications, Profile */}
+          <div className="flex items-center gap-2 md:gap-4">
+            
+            {/* Theme Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              className="theme-hover p-2 theme-subtext hover:theme-text rounded-lg transition-colors cursor-pointer"
+              title="Toggle Theme"
+            >
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+
             {/* Bell Icon Notification Trigger */}
             <div className="relative" ref={bellRef}>
               <button
@@ -198,24 +210,21 @@ export function OrganizerLayout({ children }) {
               >
                 <Bell className="w-4 h-4" />
                 {hasUnread && (
-                  <span className="w-2 h-2 bg-indigo-600 rounded-full absolute top-1.5 right-1.5 ring-2 ring-white animate-pulse"></span>
+                  <span className="w-2 h-2 bg-purple-600 rounded-full absolute top-1.5 right-1.5 ring-2 ring-white animate-pulse"></span>
                 )}
               </button>
 
               {/* Notification Popup Dropdown */}
               {isBellOpen && (
-                <div className="theme-card absolute right-0 mt-2 w-80 border rounded-2xl shadow-xl p-4 z-50 space-y-3">
-                  <div
-                    className="flex items-center justify-between border-b pb-2"
-                    style={{ borderColor: "var(--border-color)" }}
-                  >
+                <div className="theme-card absolute right-0 mt-2 w-80 border theme-border rounded-2xl shadow-xl p-4 z-50 space-y-3">
+                  <div className="flex items-center justify-between border-b theme-border pb-2">
                     <h3 className="text-xs font-bold theme-text">
                       Notifications
                     </h3>
                     {hasUnread && (
                       <button
                         onClick={markAllRead}
-                        className="text-[10px] text-indigo-500 font-semibold hover:underline cursor-pointer"
+                        className="text-[10px] text-purple-500 font-semibold hover:underline cursor-pointer"
                       >
                         Mark all as read
                       </button>
@@ -226,11 +235,10 @@ export function OrganizerLayout({ children }) {
                     {notifications.map((n) => (
                       <div
                         key={n.id}
-                        className="p-2.5 rounded-xl border text-xs flex gap-2.5 transition-colors"
-                        style={{ borderColor: "var(--border-color)" }}
+                        className="p-2.5 rounded-xl border theme-border text-xs flex gap-2.5 transition-colors"
                       >
                         {n.type === "info" && (
-                          <Info className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+                          <Info className="w-4 h-4 text-purple-500 shrink-0 mt-0.5" />
                         )}
                         {n.type === "alert" && (
                           <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
@@ -256,24 +264,20 @@ export function OrganizerLayout({ children }) {
               )}
             </div>
 
-            <div
-              className="h-5 w-px"
-              style={{ backgroundColor: "var(--border-color)" }}
-            />
+            <div className="h-5 w-px bg-gray-300 dark:bg-gray-700" />
 
             {/* Profile Avatar Pill */}
             <div
               onClick={() => navigate("/organizer/profile")}
               className="theme-hover flex items-center gap-2.5 cursor-pointer p-1.5 rounded-lg transition-colors"
             >
-              <div className="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-xs shadow-xs">
+              <div className="w-8 h-8 rounded-full bg-purple-600 text-white font-bold flex items-center justify-center text-xs shadow-xs">
                 {getInitials(user?.name)}
               </div>
               <div className="hidden sm:block text-left">
                 <p className="text-xs font-bold theme-text leading-tight">
                   {user?.name || "User"}
                 </p>
-
                 <p className="text-[10px] theme-subtext">{user?.email || ""}</p>
               </div>
             </div>
@@ -283,20 +287,14 @@ export function OrganizerLayout({ children }) {
         {/* Dynamic Page Content */}
         <main className="flex-1 p-6 md:p-8 w-full max-w-full">{children}</main>
 
-        <footer className="theme-header border-t py-4 px-8 text-xs theme-subtext flex flex-col sm:flex-row items-center justify-between gap-2 mt-auto">
+        <footer className="theme-header border-t theme-border py-4 px-8 text-xs theme-subtext flex flex-col sm:flex-row items-center justify-between gap-2 mt-auto">
           <p>
             © {new Date().getFullYear()} NexusPlay Esports. All rights reserved.
           </p>
           <div className="flex items-center gap-4 font-medium">
-            <a href="#" className="hover:text-indigo-500">
-              Privacy Policy
-            </a>
-            <a href="#" className="hover:text-indigo-500">
-              Terms of Service
-            </a>
-            <a href="#" className="hover:text-indigo-500">
-              Support
-            </a>
+            <a href="#" className="hover:text-purple-500">Privacy Policy</a>
+            <a href="#" className="hover:text-purple-500">Terms of Service</a>
+            <a href="#" className="hover:text-purple-500">Support</a>
           </div>
         </footer>
       </div>
