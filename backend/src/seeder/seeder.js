@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import dotenv from 'dotenv';
-import Tournament from "../models/Tournament.js";
+import Tournament from "../models/tournament.js";
 import tournaments from "./data.js";
 
 
