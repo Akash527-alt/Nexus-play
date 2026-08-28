@@ -1,17 +1,17 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Lock, Mail, User, Gamepad2, Loader2 } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { Eye, EyeOff, Lock, Gamepad2, ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { useAuth } from "../../context/AuthContext";
+import { resetPassword } from "../../services/authService";
+// import { useAuth } from "../../context/AuthContext";
 
-export function RegisterPage() {
+export function ResetPasswordPage() {
+  const { token } = useParams();
   const navigate = useNavigate();
-  const { register } = useAuth();
+//   const { login } = useAuth();
 
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
     password: "",
     confirmPassword: "",
   });
@@ -32,15 +32,10 @@ export function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const { name, email, password, confirmPassword } = formData;
+    const { password, confirmPassword } = formData;
 
-    if (!name || !email || !password || !confirmPassword) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
+    if (!password || !confirmPassword) {
+      toast.error("Please fill in both password fields");
       return;
     }
 
@@ -49,28 +44,46 @@ export function RegisterPage() {
       return;
     }
 
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    if (!token) {
+      toast.error("Invalid password reset link");
+      return;
+    }
+
     try {
       setLoading(true);
 
-      const data = await register({
-        name,
-        email,
-        password,
-      });
+      const data = await resetPassword(token, password, confirmPassword);
 
       if (!data?.success) {
-        toast.error(data?.message || "Registration failed");
+        toast.error(data?.message || "Unable to reset password");
         return;
       }
 
-      toast.success("Account created successfully");
+      toast.success("Password reset successfully");
 
-      navigate("/participant/dashboard", {
-        replace: true,
-      });
+      /*
+       * Backend sends a new JWT after resetting the password.
+       * Since it is stored in an HTTP-only cookie, the browser
+       * handles it automatically.
+       */
+
+    //   if (data.user) {
+    //     // Keep AuthContext in sync with the newly authenticated user
+    //     await login({
+    //       email: data.user.email,
+    //       password,
+    //     });
+    //   }
+
+      navigate("/", { replace: true });
     } catch (error) {
       const message =
-        error?.response?.data?.message || "Unable to create account";
+        error?.response?.data?.message || "Unable to reset password";
 
       toast.error(message);
     } finally {
@@ -92,78 +105,28 @@ export function RegisterPage() {
           </h1>
 
           <p className="text-sm text-slate-400 mt-2">
-            Join the tournament community
+            Tournament management platform
           </p>
         </div>
 
-        {/* Registration Card */}
+        {/* Card */}
         <div className="bg-[#0D1326] border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl">
           <div className="mb-7">
-            <h2 className="text-xl font-bold">Create your account</h2>
+            <h2 className="text-xl font-bold">Reset your password</h2>
 
-            <p className="text-sm text-slate-400 mt-1">
-              Register as a player on NexusPlay
+            <p className="text-sm text-slate-400 mt-2 leading-6">
+              Create a new password for your NexusPlay account.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name */}
-            <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-slate-300 mb-2"
-              >
-                Full Name
-              </label>
-
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Enter your name"
-                  autoComplete="name"
-                  className="w-full bg-[#080D1D] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                />
-              </div>
-            </div>
-
-            {/* Email */}
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-slate-300 mb-2"
-              >
-                Email
-              </label>
-
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="Enter your email"
-                  autoComplete="email"
-                  className="w-full bg-[#080D1D] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                />
-              </div>
-            </div>
-
+          <form onSubmit={handleSubmit} className="space-y-5">
             {/* Password */}
             <div>
               <label
                 htmlFor="password"
                 className="block text-sm font-medium text-slate-300 mb-2"
               >
-                Password
+                New Password
               </label>
 
               <div className="relative">
@@ -175,7 +138,7 @@ export function RegisterPage() {
                   type={showPassword ? "text" : "password"}
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="Create a password"
+                  placeholder="Enter new password"
                   autoComplete="new-password"
                   className="w-full bg-[#080D1D] border border-slate-700 rounded-xl pl-10 pr-11 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 />
@@ -212,7 +175,7 @@ export function RegisterPage() {
                   type={showConfirmPassword ? "text" : "password"}
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  placeholder="Confirm your password"
+                  placeholder="Confirm new password"
                   autoComplete="new-password"
                   className="w-full bg-[#080D1D] border border-slate-700 rounded-xl pl-10 pr-11 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 />
@@ -235,48 +198,27 @@ export function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed rounded-xl py-3 mt-2 text-sm font-semibold transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/10"
+              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed rounded-xl py-3 text-sm font-semibold transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/10"
             >
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Creating account...
+                  Resetting password...
                 </>
               ) : (
-                "Create account"
+                "Reset Password"
               )}
             </button>
           </form>
 
-          {/* Organizer Registration */}
-          <div className="mt-6 p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5">
-            <p className="text-sm font-semibold text-white">
-              Want to organize tournaments?
-            </p>
-
-            <p className="text-xs text-slate-400 mt-1 mb-3">
-              Create an organizer account and manage your own tournaments.
-            </p>
-
+          <div className="mt-7 pt-6 border-t border-slate-800 text-center">
             <Link
-              to="/register/organizer"
-              className="text-sm text-indigo-400 font-semibold hover:text-indigo-300 transition"
+              to="/login"
+              className="inline-flex items-center gap-2 text-sm text-indigo-400 font-semibold hover:text-indigo-300 transition"
             >
-              Create Organizer Account →
+              <ArrowLeft className="w-4 h-4" />
+              Back to Login
             </Link>
-          </div>
-
-          {/* Login */}
-          <div className="mt-6 pt-6 border-t border-slate-800 text-center">
-            <p className="text-sm text-slate-400">
-              Already have an account?{" "}
-              <Link
-                to="/login"
-                className="text-indigo-400 font-semibold hover:text-indigo-300"
-              >
-                Login
-              </Link>
-            </p>
           </div>
         </div>
 

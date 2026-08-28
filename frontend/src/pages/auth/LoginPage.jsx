@@ -53,7 +53,7 @@ export function LoginPage() {
       } else if (role === "superadmin") {
         navigate("/superadmin/dashboard", { replace: true });
       } else {
-        navigate("/user/dashboard", { replace: true });
+        navigate("/participant/dashboard", { replace: true });
       }
     } catch (error) {
       const message =

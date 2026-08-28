@@ -36,6 +36,13 @@ import { ParticipantHistory } from "./pages/participant/ParticipantHistory";
 import { ParticipantProfilePage } from "./pages/participant/ProfilePage";
 import { ParticipantSettingsPage } from "./pages/participant/SettingsPage";
 
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+
+import { NotFoundPage } from "./pages/NotFoundPage";
+import { UnauthorizedPage } from "./pages/UnauthorizedPage.jsx";
+import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage.jsx";
+import { ResetPasswordPage } from "./pages/auth/ResetPasswordPage";
+
 function App() {
   return (
     <ThemeProvider>
@@ -48,65 +55,105 @@ function App() {
               {/* PUBLIC ROUTES */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
-              <Route path="/register/organizer" element={<OrganizerRegisterPage />} />
-              <Route path="/register/organizer/profile" element={<OrganizerProfilePage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route
+                path="/password/reset/:token"
+                element={<ResetPasswordPage />}
+              />
+
+              <Route
+                path="/register/organizer"
+                element={<OrganizerRegisterPage />}
+              />
+              <Route
+                path="/register/organizer/profile"
+                element={<OrganizerProfilePage />}
+              />
 
               {/* PARTICIPANT ROUTES */}
               <Route
                 path="/participant/*"
                 element={
-                  <ParticipantLayout>
-                    <Routes>
-                      <Route path="dashboard" element={<ParticipantDashboard />} />
-                      <Route path="tournaments" element={<ParticipantTournaments />} />
-                      <Route path="history" element={<ParticipantHistory />} />
-                      <Route path="profile" element={<ParticipantProfilePage />} />
-                      <Route path="settings" element={<ParticipantSettingsPage />} />
-                      <Route path="*" element={<Navigate to="/participant/dashboard" replace />} />
-                    </Routes>
-                  </ParticipantLayout>
+                  <ProtectedRoute roles={["user"]}>
+                    <ParticipantLayout>
+                      <Routes>
+                        <Route
+                          path="dashboard"
+                          element={<ParticipantDashboard />}
+                        />
+                        <Route
+                          path="tournaments"
+                          element={<ParticipantTournaments />}
+                        />
+                        <Route
+                          path="history"
+                          element={<ParticipantHistory />}
+                        />
+                        <Route
+                          path="profile"
+                          element={<ParticipantProfilePage />}
+                        />
+                        <Route
+                          path="settings"
+                          element={<ParticipantSettingsPage />}
+                        />
+                        <Route
+                          path="*"
+                          element={
+                            <Navigate to="/participant/dashboard" replace />
+                          }
+                        />
+                      </Routes>
+                    </ParticipantLayout>
+                  </ProtectedRoute>
                 }
               />
 
-              {/* ORGANIZER ROUTES */}
               <Route
                 path="/organizer/*"
                 element={
-                  <OrganizerLayout>
-                    <Routes>
-                      <Route path="dashboard" element={<DashboardPage />} />
-                      <Route path="tournaments" element={<TournamentsPage />} />
-                      <Route path="tournaments/create" element={<CreateTournamentPage />} />
-                      <Route path="tournaments/:id" element={<TournamentDetailPage />} />
-                      <Route path="profile" element={<ProfilePage />} />
-                      <Route path="settings" element={<SettingsPage />} />
-                      <Route
-                        path="history"
-                        element={
-                          <div className="theme-card p-6 rounded-2xl border shadow-xs">
-                            <h1 className="text-xl font-bold theme-text">Tournament History</h1>
-                            <p className="text-sm theme-subtext">View completed and past esports events.</p>
-                          </div>
-                        }
-                      />
-                      <Route
-                        path="sponsors"
-                        element={
-                          <div className="theme-card p-6 rounded-2xl border shadow-xs">
-                            <h1 className="text-xl font-bold theme-text">Sponsors Management</h1>
-                            <p className="text-sm theme-subtext">Manage brand partnerships and tournament sponsors.</p>
-                          </div>
-                        }
-                      />
-                      <Route path="*" element={<Navigate to="/organizer/dashboard" replace />} />
-                    </Routes>
-                  </OrganizerLayout>
+                  <ProtectedRoute roles={["organizer"]}>
+                    <OrganizerLayout>
+                      <Routes>
+                        <Route path="dashboard" element={<DashboardPage />} />
+
+                        <Route
+                          path="tournaments"
+                          element={<TournamentsPage />}
+                        />
+
+                        <Route
+                          path="tournaments/create"
+                          element={<CreateTournamentPage />}
+                        />
+
+                        <Route
+                          path="tournaments/:id"
+                          element={<TournamentDetailPage />}
+                        />
+
+                        <Route path="profile" element={<ProfilePage />} />
+
+                        <Route path="settings" element={<SettingsPage />} />
+
+                        {/* your existing history/sponsors routes */}
+
+                        <Route
+                          path="*"
+                          element={
+                            <Navigate to="/organizer/dashboard" replace />
+                          }
+                        />
+                      </Routes>
+                    </OrganizerLayout>
+                  </ProtectedRoute>
                 }
               />
 
               {/* ROOT & FALLBACK */}
-              <Route path="/" element={<Navigate to="/participant/dashboard" replace />} />
-              <Route path="*" element={<Navigate to="/participant/dashboard" replace />} />
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/unauthorized" element={<UnauthorizedPage />} />
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Router>
         </TournamentProvider>

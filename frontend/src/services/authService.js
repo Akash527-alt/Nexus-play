@@ -8,6 +8,30 @@ export const loginUser = async (credentials) => {
 };
 
 
+// forgot password
+export const forgotPassword = async (email) => {
+    const response = await api.post(
+        "/auth/password/forgot",
+        { email }
+    );
+
+    return response.data;
+};
+
+// Reset password
+export const resetPassword = async (token, password, confirmPassword) => {
+    const response = await api.put(
+        `/auth/password/reset/${token}`,
+        {
+            password,
+            confirmPassword,
+        }
+    );
+
+    return response.data;
+};
+
+
 // Register user
 export const registerUser = async (userData) => {
     const response = await api.post("/auth/register", userData);
