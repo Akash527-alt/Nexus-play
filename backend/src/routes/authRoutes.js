@@ -1,6 +1,7 @@
 import express from 'express';
 import { changePassword, forgotPassword, getUserProfile, loginUser, logoutUser, registerOrganizer, registerUser, resetPassword } from '../controller/authController.js';
-import { isAuthenticatedUser } from '../middleware/auth.js';
+import { authorizeRoles, isAuthenticatedUser } from '../middleware/auth.js';
+import { getMyTournaments } from '../controller/tournamentController.js';
 
 const router = express.Router();
 
@@ -16,5 +17,6 @@ router.route("/password/reset/:token").put(resetPassword);
 // organizer routes
 
 router.route("/organizer/register").post(registerOrganizer);
+
 
 export default router;

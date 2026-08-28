@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { tournamentService } from '../../services/tournamentService';
+import { tournamentService } from '../../services/tournamentService.js';
 import { Trophy, Users, Calendar, Plus, ChevronRight, Zap } from 'lucide-react';
 
 export function DashboardPage() {
