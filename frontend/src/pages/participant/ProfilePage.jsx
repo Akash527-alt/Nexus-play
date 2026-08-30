@@ -1,39 +1,88 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { authService } from "../../services/authService";
 
 export const ParticipantProfilePage = () => {
   const [profile, setProfile] = useState({
-    name: "Alex Student",
-    gamerTag: "#ALEX_NEXUS",
-    email: "alex.student@college.edu",
-    college: "National Institute of Tech",
-    upiId: "alex@upi",
-    games: ["Valorant", "BGMI"],
+    name: "",
+    gamerTag: "",
+    email: "",
+    college: "",
+    upiId: "",
+    games: [],
+    xp: 0,
+    played: 0,
+    winRate: "0%",
+    totalEarnings: 0,
   });
 
+  const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ ...profile, gamesInput: profile.games.join(", ") });
+  const [formData, setFormData] = useState({ ...profile, gamesInput: "" });
 
-  const handleSave = (e) => {
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      const data = await authService.getCurrentUser();
+      const user = data?.user || data || {};
+      
+      const loadedProfile = {
+        name: user.fullName || user.name || "",
+        gamerTag: user.gamerTag || "#NEXUS_PLAYER",
+        email: user.email || "",
+        college: user.college || "N/A",
+        upiId: user.upiId || "",
+        games: user.games || [],
+        xp: user.xp || 0,
+        played: user.stats?.played || 0,
+        winRate: user.stats?.winRate ? `${user.stats.winRate}%` : "0%",
+        totalEarnings: user.stats?.earnings || 0,
+      };
+
+      setProfile(loadedProfile);
+      setFormData({ ...loadedProfile, gamesInput: loadedProfile.games.join(", ") });
+    } catch (err) {
+      console.error("Failed to load profile:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
     const gamesArr = formData.gamesInput.split(",").map((g) => g.trim()).filter(Boolean);
-    setProfile({
+    const updated = {
       ...formData,
       games: gamesArr,
-    });
-    setIsEditing(false);
-    toast.success("Profile updated successfully!");
+    };
+
+    try {
+      await authService.updateProfile(updated);
+      setProfile(updated);
+      setIsEditing(false);
+      toast.success("Profile updated successfully!");
+    } catch (err) {
+      toast.error("Failed to update profile");
+    }
   };
+
+  if (loading) {
+    return <div className="p-8 text-center text-xs theme-subtext">Loading player profile...</div>;
+  }
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
       {/* Top Banner Box */}
       <div className="theme-card border theme-border p-6 rounded-2xl flex flex-col md:flex-row items-center gap-6 shadow-xs w-full">
         <div className="h-20 w-20 bg-indigo-600 border-2 border-indigo-400 rounded-full flex items-center justify-center text-2xl font-black text-white shadow-md shrink-0">
-          {profile.name.split(" ").map(n => n[0]).join("")}
+          {profile.name ? profile.name.split(" ").map(n => n[0]).join("") : "P"}
         </div>
         <div className="text-center md:text-left flex-1">
-          <h2 className="text-xl font-extrabold theme-text">{profile.name}</h2>
+          <h2 className="text-xl font-extrabold theme-text">{profile.name || "Player"}</h2>
           <p className="text-xs theme-subtext mt-0.5">
             Gamer Tag: <span className="text-indigo-500 font-semibold">{profile.gamerTag}</span> • Verified Student Player
           </p>
@@ -44,7 +93,7 @@ export const ParticipantProfilePage = () => {
               </span>
             ))}
             <span className="text-[10px] bg-indigo-500/10 text-indigo-500 px-2.5 py-1 rounded-md border border-indigo-500/20 font-bold">
-              450 XP
+              {profile.xp} XP
             </span>
           </div>
         </div>
@@ -63,18 +112,18 @@ export const ParticipantProfilePage = () => {
         <div className="theme-card border theme-border p-5 rounded-2xl space-y-3 shadow-xs">
           <h3 className="text-sm font-bold theme-text border-b theme-border pb-2">Personal Info</h3>
           <div className="text-xs theme-subtext space-y-2">
-            <p><strong className="theme-text">Email:</strong> {profile.email}</p>
-            <p><strong className="theme-text">College:</strong> {profile.college}</p>
-            <p><strong className="theme-text">Default UPI:</strong> {profile.upiId}</p>
+            <p><strong className="theme-text">Email:</strong> {profile.email || "N/A"}</p>
+            <p><strong className="theme-text">College:</strong> {profile.college || "N/A"}</p>
+            <p><strong className="theme-text">Default UPI:</strong> {profile.upiId || "Not set"}</p>
           </div>
         </div>
         
         <div className="theme-card border theme-border p-5 rounded-2xl space-y-3 shadow-xs">
           <h3 className="text-sm font-bold theme-text border-b theme-border pb-2">Tournament Overview</h3>
           <div className="text-xs theme-subtext space-y-2">
-            <p><strong className="theme-text">Played:</strong> 12 Events</p>
-            <p><strong className="theme-text">Win Rate:</strong> 66%</p>
-            <p><strong className="theme-text">Total Earnings:</strong> ₹4,500</p>
+            <p><strong className="theme-text">Played:</strong> {profile.played} Events</p>
+            <p><strong className="theme-text">Win Rate:</strong> {profile.winRate}</p>
+            <p><strong className="theme-text">Total Earnings:</strong> ₹{(profile.totalEarnings).toLocaleString("en-IN")}</p>
           </div>
         </div>
       </div>
@@ -118,7 +167,6 @@ export const ParticipantProfilePage = () => {
                   value={formData.college} 
                   onChange={(e) => setFormData({ ...formData, college: e.target.value })}
                   className="w-full theme-input border rounded-xl p-2.5 focus:outline-none focus:border-indigo-500"
-                  required
                 />
               </div>
 
@@ -129,7 +177,7 @@ export const ParticipantProfilePage = () => {
                   value={formData.upiId} 
                   onChange={(e) => setFormData({ ...formData, upiId: e.target.value })}
                   className="w-full theme-input border rounded-xl p-2.5 focus:outline-none focus:border-indigo-500"
-                  required
+                  placeholder="username@upi"
                 />
               </div>
 

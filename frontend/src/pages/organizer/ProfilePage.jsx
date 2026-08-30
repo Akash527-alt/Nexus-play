@@ -23,16 +23,24 @@ export function ProfilePage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!savedSuccess) return;
+    const timer = setTimeout(() => {
+      setSavedSuccess(false);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [savedSuccess]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setProfile(prev => ({ ...prev, [name]: value }));
+    setProfile((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSave = (e) => {
     e.preventDefault();
     localStorage.setItem('organizer_profile', JSON.stringify(profile));
     setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
   };
 
   const getInitials = (name) => {
@@ -78,10 +86,11 @@ export function ProfilePage() {
           
           {/* Full Name */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-bold theme-subtext uppercase">Full Name</label>
+            <label htmlFor="name" className="block text-xs font-bold theme-subtext uppercase">Full Name</label>
             <div className="relative">
               <User className="w-4 h-4 theme-subtext absolute left-3 top-1/2 -translate-y-1/2" />
               <input 
+                id="name"
                 type="text" 
                 name="name" 
                 value={profile.name} 
@@ -94,10 +103,11 @@ export function ProfilePage() {
 
           {/* Email */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-bold theme-subtext uppercase">Email Address</label>
+            <label htmlFor="email" className="block text-xs font-bold theme-subtext uppercase">Email Address</label>
             <div className="relative">
               <Mail className="w-4 h-4 theme-subtext absolute left-3 top-1/2 -translate-y-1/2" />
               <input 
+                id="email"
                 type="email" 
                 name="email" 
                 value={profile.email} 
@@ -110,10 +120,11 @@ export function ProfilePage() {
 
           {/* Organization */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-bold theme-subtext uppercase">Organization</label>
+            <label htmlFor="organization" className="block text-xs font-bold theme-subtext uppercase">Organization</label>
             <div className="relative">
               <Building className="w-4 h-4 theme-subtext absolute left-3 top-1/2 -translate-y-1/2" />
               <input 
+                id="organization"
                 type="text" 
                 name="organization" 
                 value={profile.organization} 
@@ -126,10 +137,11 @@ export function ProfilePage() {
 
           {/* Role */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-bold theme-subtext uppercase">Role</label>
+            <label htmlFor="role" className="block text-xs font-bold theme-subtext uppercase">Role</label>
             <div className="relative">
               <ShieldCheck className="w-4 h-4 theme-subtext absolute left-3 top-1/2 -translate-y-1/2" />
               <input 
+                id="role"
                 type="text" 
                 name="role" 
                 value={profile.role} 
@@ -144,8 +156,9 @@ export function ProfilePage() {
 
         {/* Bio */}
         <div className="space-y-1.5">
-          <label className="block text-xs font-bold theme-subtext uppercase">Bio / Overview</label>
+          <label htmlFor="bio" className="block text-xs font-bold theme-subtext uppercase">Bio / Overview</label>
           <textarea 
+            id="bio"
             name="bio" 
             rows="3" 
             value={profile.bio} 

@@ -17,7 +17,8 @@ export function OrganizerSidebar() {
 
   const navItems = [
     { label: 'Dashboard', path: '/organizer/dashboard', icon: LayoutDashboard },
-    { label: 'Tournaments', path: '/organizer/tournaments', icon: Trophy },
+    // end: true yahan add karne se `/organizer/tournaments/create` par "Tournaments" active nahi dikhega
+    { label: 'Tournaments', path: '/organizer/tournaments', icon: Trophy, end: true },
     { label: 'Create Tournament', path: '/organizer/tournaments/create', icon: PlusCircle },
     { label: 'History', path: '/organizer/history', icon: History },
     { label: 'Sponsors', path: '/organizer/sponsors', icon: Handshake },
@@ -51,6 +52,7 @@ export function OrganizerSidebar() {
               <NavLink
                 key={item.path}
                 to={item.path}
+                end={item.end} // Directs React Router to match exact path only
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
                     isActive

@@ -1,232 +1,251 @@
 import React, { useEffect, useState } from "react";
-import { useTournaments } from "../../context/TournamentContext";
-import { ParticipantRegistrationModal } from "../../components/participant/ParticipantRegistrationModal";
-import {
-  Trophy,
-  Users,
-  Calendar,
-  Search,
-  MapPin,
-  Gamepad2,
-  Loader2,
-} from "lucide-react";
+import { toast } from "sonner";
+import { participantService } from "../../services/participantService";
 
-export function ParticipantTournaments() {
-  const { tournaments, loading, error, fetchAllTournaments } = useTournaments();
-
-  const [search, setSearch] = useState("");
-  const [selectedGame, setSelectedGame] = useState("All");
-
+export const ParticipantTournaments = () => {
+  const [tournaments, setTournaments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedTournament, setSelectedTournament] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [registering, setRegistering] = useState(false);
 
   useEffect(() => {
-    fetchAllTournaments();
+    fetchTournaments();
   }, []);
 
-  const handleOpenRegistration = (tournament) => {
-    setSelectedTournament(tournament);
-    setIsModalOpen(true);
+  const fetchTournaments = async () => {
+    try {
+      setLoading(true);
+      const res = await participantService.getTournaments();
+      const list = Array.isArray(res) ? res : res?.data || res?.tournaments || [];
+      setTournaments(list);
+    } catch (err) {
+      console.error("Failed to load tournaments:", err);
+      toast.error("Failed to load tournaments list");
+      setTournaments([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const games = ["All", ...new Set(tournaments.map((t) => t.game))];
+  const handleRegister = async (tournamentId) => {
+    try {
+      setRegistering(true);
+      await participantService.registerTournament(tournamentId);
+      toast.success("Successfully registered for the tournament!");
+      setSelectedTournament(null);
+      fetchTournaments();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to register for tournament");
+    } finally {
+      setRegistering(false);
+    }
+  };
 
-  const filtered = tournaments.filter((t) => {
-    const matchesGame = selectedGame === "All" || t.game === selectedGame;
-
+  const filteredTournaments = tournaments.filter((item) => {
     const matchesSearch =
-      t.title?.toLowerCase().includes(search.toLowerCase()) ||
-      t.game?.toLowerCase().includes(search.toLowerCase());
+      item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.game?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    return matchesGame && matchesSearch;
+    if (!matchesSearch) return false;
+
+    if (filter === "registered") return item.isRegistered || item.status === "registered";
+    if (filter === "live") return item.status?.toLowerCase() === "live";
+    if (filter === "upcoming") return item.status?.toLowerCase() === "upcoming";
+
+    return true;
   });
 
   return (
     <div className="w-full space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="theme-card border theme-border p-6 rounded-2xl shadow-xs w-full flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black theme-text tracking-wide">
-            Available Tournaments
-          </h1>
-
+          <h1 className="text-xl font-extrabold theme-text">Esports Arena Tournaments</h1>
           <p className="text-xs theme-subtext mt-1">
-            Browse active tournaments created by organizers and register your
-            squad.
+            Browse available tournaments, register your squad, and compete for prize pools.
           </p>
         </div>
 
-        {/* Search / Filter */}
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
-            <Search className="w-4 h-4 theme-subtext absolute left-3 top-1/2 -translate-y-1/2" />
-
-            <input
-              type="text"
-              placeholder="Search tournaments..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-xs border theme-border rounded-xl theme-card theme-text outline-none focus:ring-2 focus:ring-indigo-500/20"
-            />
-          </div>
-
-          <select
-            value={selectedGame}
-            onChange={(e) => setSelectedGame(e.target.value)}
-            className="text-xs py-2 px-3 border theme-border rounded-xl theme-card theme-text outline-none font-semibold cursor-pointer"
-          >
-            {games.map((game) => (
-              <option key={game} value={game}>
-                {game === "All" ? "All Games" : game}
-              </option>
-            ))}
-          </select>
+        <div className="relative w-full md:w-64">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search game or event..."
+            className="w-full theme-card border theme-border rounded-xl px-3.5 py-2 text-xs theme-text focus:outline-none focus:border-indigo-500 pl-9"
+          />
+          <span className="absolute left-3 top-2.5 text-xs theme-subtext">🔍</span>
         </div>
       </div>
 
-      {/* Loading */}
-      {loading && (
-        <div className="theme-card border theme-border p-12 rounded-2xl flex flex-col items-center justify-center gap-3">
-          <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
-
-          <p className="text-sm theme-subtext">Loading tournaments...</p>
-        </div>
-      )}
-
-      {/* Error */}
-      {!loading && error && (
-        <div className="theme-card border theme-border p-12 rounded-2xl text-center space-y-2">
-          <p className="text-sm font-bold text-red-500">
-            Unable to load tournaments
-          </p>
-
-          <p className="text-xs theme-subtext">{error}</p>
-
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        {[
+          { id: "all", label: "All Tournaments" },
+          { id: "registered", label: "My Registrations" },
+          { id: "upcoming", label: "Upcoming" },
+          { id: "live", label: "Live Now 🔴" },
+        ].map((tab) => (
           <button
-            onClick={fetchAllTournaments}
-            className="mt-3 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg"
+            key={tab.id}
+            onClick={() => setFilter(tab.id)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+              filter === tab.id
+                ? "bg-indigo-600 text-white shadow-sm"
+                : "theme-card border theme-border theme-subtext theme-hover"
+            }`}
           >
-            Try Again
+            {tab.label}
           </button>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {/* Tournaments */}
-      {!loading && !error && filtered.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map((tournament) => (
+      {loading ? (
+        <div className="p-12 text-center text-xs theme-subtext theme-card border theme-border rounded-2xl">
+          Fetching available tournaments...
+        </div>
+      ) : filteredTournaments.length === 0 ? (
+        <div className="p-12 text-center text-xs theme-subtext theme-card border theme-border rounded-2xl">
+          No tournaments found matching your criteria.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
+          {filteredTournaments.map((t) => (
             <div
-              key={tournament._id}
-              className="theme-card border theme-border rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:shadow-md transition space-y-4"
+              key={t._id || t.id}
+              className="theme-card border theme-border rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-xs hover:border-indigo-500/50 transition"
             >
               <div className="space-y-3">
-                {/* Game + Status */}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-indigo-500 bg-indigo-500/10 px-2.5 py-1 rounded-md">
-                    <Gamepad2 className="w-3.5 h-3.5" />
-                    {tournament.game}
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold bg-indigo-600/10 text-indigo-500 border border-indigo-500/20 px-2.5 py-0.5 rounded-md uppercase">
+                    {t.game || "Esports"}
                   </span>
-
-                  <span className="text-[11px] font-semibold text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-md">
-                    {tournament.status}
+                  <span
+                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-md ${
+                      t.status === "live"
+                        ? "bg-red-500/10 text-red-500 border border-red-500/20"
+                        : "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+                    }`}
+                  >
+                    {t.status || "Open"}
                   </span>
                 </div>
 
-                {/* Title */}
-                <h3 className="font-bold text-base theme-text line-clamp-1">
-                  {tournament.title}
-                </h3>
+                <div>
+                  <h3 className="text-sm font-bold theme-text line-clamp-1">{t.title}</h3>
+                  <p className="text-[11px] theme-subtext mt-1">
+                    Organizer: <span className="theme-text font-medium">{t.organizerName || "Official Arena"}</span>
+                  </p>
+                </div>
 
-                {/* Details */}
-                <div className="space-y-2 text-xs theme-subtext pt-2 border-t theme-border">
-                  {/* Prize */}
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <Trophy className="w-3.5 h-3.5 text-indigo-500" />
-                      Prize Pool
-                    </span>
-
-                    <span className="font-bold theme-text">
-                      ₹{(tournament.prizePool || 0).toLocaleString("en-IN")}
-                    </span>
+                <div className="grid grid-cols-2 gap-2 theme-icon-box border theme-border p-3 rounded-xl text-xs">
+                  <div>
+                    <p className="text-[10px] theme-subtext font-medium">Prize Pool</p>
+                    <p className="font-bold text-emerald-500 mt-0.5">
+                      ₹{(Number(t.prizePool) || 0).toLocaleString("en-IN")}
+                    </p>
                   </div>
-
-                  {/* Participants */}
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5 text-indigo-500" />
-                      Slots
-                    </span>
-
-                    <span className="font-medium theme-text">
-                      {tournament.currentParticipants || 0}/
-                      {tournament.maxParticipants}
-                    </span>
+                  <div>
+                    <p className="text-[10px] theme-subtext font-medium">Entry Fee</p>
+                    <p className="font-bold theme-text mt-0.5">
+                      {t.entryFee ? `₹${t.entryFee}` : "Free"}
+                    </p>
                   </div>
-
-                  {/* Start Date */}
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-                      Start Date
-                    </span>
-
-                    <span className="font-medium theme-text">
-                      {tournament.startDate
-                        ? new Date(tournament.startDate).toLocaleDateString(
-                            "en-IN",
-                          )
-                        : "TBA"}
-                    </span>
+                  <div>
+                    <p className="text-[10px] theme-subtext font-medium">Date & Time</p>
+                    <p className="font-bold theme-text mt-0.5 text-[11px]">
+                      {t.startDate ? new Date(t.startDate).toLocaleDateString("en-IN") : "TBA"}
+                    </p>
                   </div>
-
-                  {/* Venue */}
-                  {tournament.venue && (
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-indigo-500" />
-                        Venue
-                      </span>
-
-                      <span className="font-medium theme-text line-clamp-1">
-                        {tournament.venue}
-                      </span>
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-[10px] theme-subtext font-medium">Slots Filled</p>
+                    <p className="font-bold theme-text mt-0.5 text-[11px]">
+                      {t.filledSlots || 0} / {t.maxSlots || "∞"}
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              {/* Register */}
-              <button
-                onClick={() => handleOpenRegistration(tournament)}
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition cursor-pointer"
-              >
-                Register Now (
-                {tournament.entryFee ? `₹${tournament.entryFee}` : "Free Entry"}
-                )
-              </button>
+              {t.isRegistered ? (
+                <button
+                  disabled
+                  className="w-full py-2.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-xs font-bold rounded-xl cursor-default text-center"
+                >
+                  ✓ Registered
+                </button>
+              ) : (
+                <button
+                  onClick={() => setSelectedTournament(t)}
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition shadow-sm text-center"
+                >
+                  Register Now ➔
+                </button>
+              )}
             </div>
           ))}
         </div>
       )}
 
-      {/* Empty */}
-      {!loading && !error && filtered.length === 0 && (
-        <div className="theme-card border theme-border p-12 rounded-2xl text-center space-y-2">
-          <p className="text-sm font-bold theme-text">No tournaments found</p>
+      {selectedTournament && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="theme-card border theme-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b theme-border pb-3">
+              <h3 className="text-sm font-bold theme-text">Confirm Tournament Slot</h3>
+              <button
+                onClick={() => setSelectedTournament(null)}
+                className="theme-subtext text-xs hover:theme-text"
+              >
+                ✕
+              </button>
+            </div>
 
-          <p className="text-xs theme-subtext">
-            When organizers create events, they will appear here live.
-          </p>
+            <div className="space-y-3 text-xs">
+              <p className="theme-text">
+                You are about to register for <strong className="text-indigo-500">{selectedTournament.title}</strong>.
+              </p>
+
+              <div className="theme-icon-box border theme-border p-3 rounded-xl space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="theme-subtext">Game:</span>
+                  <span className="font-bold theme-text">{selectedTournament.game}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="theme-subtext">Entry Fee:</span>
+                  <span className="font-bold text-emerald-500">
+                    {selectedTournament.entryFee ? `₹${selectedTournament.entryFee}` : "Free"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="theme-subtext">Date:</span>
+                  <span className="font-bold theme-text">
+                    {selectedTournament.startDate
+                      ? new Date(selectedTournament.startDate).toLocaleDateString("en-IN")
+                      : "TBA"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-3 border-t theme-border">
+              <button
+                onClick={() => setSelectedTournament(null)}
+                className="px-4 py-2 theme-border border rounded-xl theme-subtext text-xs theme-hover"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={registering}
+                onClick={() => handleRegister(selectedTournament._id || selectedTournament.id)}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition"
+              >
+                {registering ? "Confirming..." : "Confirm Registration"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
-
-      {/* Registration Modal */}
-      <ParticipantRegistrationModal
-        tournament={selectedTournament}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
     </div>
   );
-}
+};
+
+export default ParticipantTournaments;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { tournamentService } from '../../services/tournamentService';
 import { ArrowLeft, Calendar, MapPin, Users, Trophy, Clock, Trash2, ShieldAlert } from 'lucide-react';
@@ -10,26 +10,33 @@ export function TournamentDetailPage() {
   const [tournament, setTournament] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchDetail();
-  }, [id]);
-
-  const fetchDetail = async () => {
+  const fetchDetail = useCallback(async () => {
     try {
-      const data = await tournamentService.getById(id);
+      const res = await tournamentService.getById(id);
+      const data = res?.data || res?.tournament || res;
       setTournament(data);
     } catch (err) {
       console.error('Error fetching detail:', err);
+      toast.error('Failed to load tournament details');
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchDetail();
+  }, [fetchDetail]);
 
   const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete this tournament?')) {
-      await tournamentService.delete(id);
-      toast.success('Tournament deleted successfully');
-      navigate('/organizer/tournaments');
+      try {
+        await tournamentService.delete(id);
+        toast.success('Tournament deleted successfully');
+        navigate('/organizer/tournaments');
+      } catch (err) {
+        console.error('Failed to delete tournament:', err);
+        toast.error('Failed to delete tournament');
+      }
     }
   };
 
@@ -45,18 +52,25 @@ export function TournamentDetailPage() {
     return (
       <div className="theme-card p-12 text-center rounded-2xl border space-y-3">
         <h2 className="text-lg font-bold theme-text">Tournament Not Found</h2>
-        <button onClick={() => navigate('/organizer/tournaments')} className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 rounded-lg">
+        <button 
+          type="button" 
+          onClick={() => navigate('/organizer/tournaments')} 
+          className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 rounded-lg cursor-pointer"
+        >
           Back to Tournaments
         </button>
       </div>
     );
   }
 
+  const registeredSlots = tournament.participants?.length || tournament.teamsCount || 0;
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Navigation & Header */}
       <div className="flex items-center justify-between">
         <button
+          type="button"
           onClick={() => navigate('/organizer/tournaments')}
           className="theme-hover theme-text flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border cursor-pointer"
           style={{ borderColor: 'var(--border-color)' }}
@@ -65,6 +79,7 @@ export function TournamentDetailPage() {
         </button>
 
         <button
+          type="button"
           onClick={handleDelete}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 rounded-lg cursor-pointer transition-colors"
         >
@@ -78,9 +93,9 @@ export function TournamentDetailPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 bg-indigo-500/10 px-2.5 py-0.5 rounded-md">
-                {tournament.game}
+                {tournament.game || 'Esports'}
               </span>
-              <span className="text-xs theme-subtext">• {tournament.format || tournament.type}</span>
+              <span className="text-xs theme-subtext">• {tournament.format || tournament.type || 'Single Elimination'}</span>
             </div>
             <h1 className="text-2xl font-extrabold theme-text mt-1">{tournament.title || tournament.name}</h1>
             <p className="text-xs theme-subtext mt-1">{tournament.description || 'No description provided.'}</p>
@@ -108,7 +123,7 @@ export function TournamentDetailPage() {
             <span className="text-[10px] font-bold uppercase theme-subtext flex items-center gap-1">
               <Users className="w-3.5 h-3.5 text-indigo-500" /> Slots / Teams
             </span>
-            <p className="text-lg font-bold theme-text mt-1">0 / {tournament.maxParticipants || 16}</p>
+            <p className="text-lg font-bold theme-text mt-1">{registeredSlots} / {tournament.maxParticipants || 16}</p>
           </div>
 
           <div className="p-3.5 rounded-xl border bg-indigo-500/5" style={{ borderColor: 'var(--border-color)' }}>
@@ -123,7 +138,7 @@ export function TournamentDetailPage() {
               <Clock className="w-3.5 h-3.5 text-rose-500" /> Reg. Fee
             </span>
             <p className="text-sm font-bold theme-text mt-1">
-              {Number(tournament.entryFee || tournament.registrationFee) > 0 ? `₹${tournament.entryFee}` : 'Free Entry'}
+              {Number(tournament.entryFee || tournament.registrationFee) > 0 ? `₹${tournament.entryFee || tournament.registrationFee}` : 'Free Entry'}
             </p>
           </div>
         </div>
@@ -137,17 +152,23 @@ export function TournamentDetailPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
             <div className="p-2.5 rounded-lg border bg-zinc-500/5" style={{ borderColor: 'var(--border-color)' }}>
               <span className="theme-subtext block text-[10px] uppercase font-bold">Registration Deadline</span>
-              <span className="theme-text font-bold text-rose-500">{tournament.registrationDeadline || 'Not Set'}</span>
+              <span className="theme-text font-bold text-rose-500">
+                {tournament.registrationDeadline ? new Date(tournament.registrationDeadline).toLocaleDateString() : 'Not Set'}
+              </span>
             </div>
 
             <div className="p-2.5 rounded-lg border bg-zinc-500/5" style={{ borderColor: 'var(--border-color)' }}>
               <span className="theme-subtext block text-[10px] uppercase font-bold">Start Date</span>
-              <span className="theme-text font-bold">{tournament.startDate || 'Not Set'}</span>
+              <span className="theme-text font-bold">
+                {tournament.startDate ? new Date(tournament.startDate).toLocaleDateString() : 'Not Set'}
+              </span>
             </div>
 
             <div className="p-2.5 rounded-lg border bg-zinc-500/5" style={{ borderColor: 'var(--border-color)' }}>
               <span className="theme-subtext block text-[10px] uppercase font-bold">End Date</span>
-              <span className="theme-text font-bold">{tournament.endDate || 'Not Set'}</span>
+              <span className="theme-text font-bold">
+                {tournament.endDate ? new Date(tournament.endDate).toLocaleDateString() : 'Not Set'}
+              </span>
             </div>
           </div>
         </div>
@@ -159,7 +180,7 @@ export function TournamentDetailPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {tournament.prizes.map((p, idx) => (
                 <div key={idx} className="flex justify-between items-center p-3 rounded-lg border text-xs" style={{ borderColor: 'var(--border-color)' }}>
-                  <span className="font-semibold theme-text">{p.position}</span>
+                  <span className="font-semibold theme-text">{p.position || `Rank ${idx + 1}`}</span>
                   <span className="font-bold text-emerald-500">₹{(Number(p.amount) || 0).toLocaleString('en-IN')}</span>
                 </div>
               ))}
@@ -176,7 +197,10 @@ export function TournamentDetailPage() {
           </h3>
           <div className="p-3.5 rounded-xl border text-xs theme-subtext space-y-1.5" style={{ borderColor: 'var(--border-color)' }}>
             {typeof tournament.rules === 'string'
-              ? tournament.rules.split('\n').map((r, i) => <p key={i}>• {r}</p>)
+              ? tournament.rules
+                  .split('\n')
+                  .filter((line) => line.trim() !== '')
+                  .map((r, i) => <p key={i}>• {r}</p>)
               : Array.isArray(tournament.rules)
               ? tournament.rules.map((r, i) => <p key={i}>• {r}</p>)
               : <p>Standard fair play rules apply.</p>}

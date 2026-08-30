@@ -1,18 +1,45 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useTheme } from "../../context/ThemeContext";
+import { authService } from "../../services/authService";
 
 export const ParticipantSettingsPage = () => {
   const { theme, setThemeMode } = useTheme();
+  const [upiId, setUpiId] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    toast.success("Settings saved successfully!");
+  useEffect(() => {
+    fetchUserSettings();
+  }, []);
+
+  const fetchUserSettings = async () => {
+    try {
+      setLoading(true);
+      const user = await authService.getCurrentUser();
+      setUpiId(user?.upiId || "");
+    } catch (err) {
+      console.error("Failed to load settings:", err);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    try {
+      await authService.updateSettings({ upiId });
+      toast.success("Settings saved successfully!");
+    } catch (err) {
+      toast.error("Failed to update settings.");
+    }
+  };
+
+  if (loading) {
+    return <div className="p-8 text-center text-xs theme-subtext">Loading settings...</div>;
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      {/* Header */}
       <div>
         <h2 className="text-xl font-extrabold theme-text">Account Settings</h2>
         <p className="text-xs theme-subtext mt-1">
@@ -21,14 +48,12 @@ export const ParticipantSettingsPage = () => {
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
-        {/* Appearance / Theme Options */}
         <div className="theme-card border theme-border p-6 rounded-2xl space-y-4 shadow-xs">
           <h3 className="text-sm font-bold theme-text border-b theme-border pb-3">
             Appearance & Theme
           </h3>
 
           <div className="grid grid-cols-2 gap-4">
-            {/* Dark Mode Card */}
             <button
               type="button"
               onClick={() => setThemeMode("dark")}
@@ -54,7 +79,6 @@ export const ParticipantSettingsPage = () => {
               </div>
             </button>
 
-            {/* Light Mode Card */}
             <button
               type="button"
               onClick={() => setThemeMode("light")}
@@ -82,7 +106,6 @@ export const ParticipantSettingsPage = () => {
           </div>
         </div>
 
-        {/* Payment Settings */}
         <div className="theme-card border theme-border p-6 rounded-2xl space-y-4 shadow-xs">
           <h3 className="text-sm font-bold theme-text border-b theme-border pb-3">
             Payments & Wallet
@@ -93,14 +116,14 @@ export const ParticipantSettingsPage = () => {
             </label>
             <input
               type="text"
-              defaultValue="alex@upi"
+              value={upiId}
+              onChange={(e) => setUpiId(e.target.value)}
               className="w-full theme-card border theme-border rounded-xl p-2.5 text-xs theme-text focus:outline-none focus:border-indigo-500"
               placeholder="e.g. username@upi"
             />
           </div>
         </div>
 
-        {/* Notifications */}
         <div className="theme-card border theme-border p-6 rounded-2xl space-y-4 shadow-xs">
           <h3 className="text-sm font-bold theme-text border-b theme-border pb-3">
             Notifications
@@ -135,7 +158,6 @@ export const ParticipantSettingsPage = () => {
           </div>
         </div>
 
-        {/* Save Button */}
         <div className="flex justify-end">
           <button
             type="submit"
@@ -148,3 +170,5 @@ export const ParticipantSettingsPage = () => {
     </div>
   );
 };
+
+export default ParticipantSettingsPage;

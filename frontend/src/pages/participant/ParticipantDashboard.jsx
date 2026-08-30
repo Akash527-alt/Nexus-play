@@ -1,18 +1,44 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { participantService } from "../../services/participantService";
+import { useAuth } from "../../context/AuthContext";
 
 export const ParticipantDashboard = () => {
-  const upcomingMatches = [
-    { id: 1, game: "Valorant", tournament: "Inter-College Showdown", time: "Today, 7:00 PM", opponent: "Team Alpha" },
-    { id: 2, game: "BGMI", tournament: "Campus Cup 2026", time: "Tomorrow, 4:00 PM", opponent: "Squad X" },
-  ];
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [upcomingMatches, setUpcomingMatches] = useState([]);
+  const [recentStats, setRecentStats] = useState([
+    { label: "Tournaments Joined", value: "0", icon: "🏆" },
+    { label: "Matches Won", value: "0", icon: "⚔️" },
+    { label: "Total Earnings", value: "₹0", icon: "💰" },
+    { label: "XP Rank", value: "#--", icon: "⚡" },
+  ]);
 
-  const recentStats = [
-    { label: "Tournaments Joined", value: "12", icon: "🏆" },
-    { label: "Matches Won", value: "28", icon: "⚔️" },
-    { label: "Total Earnings", value: "₹4,500", icon: "💰" },
-    { label: "XP Rank", value: "#14", icon: "⚡" },
-  ];
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const data = await participantService.getDashboardStats();
+      
+      if (data?.stats) {
+        setRecentStats([
+          { label: "Tournaments Joined", value: data.stats.joined ?? "0", icon: "🏆" },
+          { label: "Matches Won", value: data.stats.won ?? "0", icon: "⚔️" },
+          { label: "Total Earnings", value: `₹${(data.stats.earnings ?? 0).toLocaleString("en-IN")}`, icon: "💰" },
+          { label: "XP Rank", value: data.stats.rank ? `#${data.stats.rank}` : "#--", icon: "⚡" },
+        ]);
+      }
+
+      setUpcomingMatches(data?.upcomingMatches || []);
+    } catch (err) {
+      console.error("Failed to fetch dashboard stats:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="w-full space-y-6">
@@ -20,7 +46,7 @@ export const ParticipantDashboard = () => {
       <div className="theme-card border theme-border p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm w-full">
         <div>
           <h1 className="text-2xl font-black theme-text tracking-wide">
-            Welcome Back, <span className="text-indigo-500">Alex</span> 🎮
+            Welcome Back, <span className="text-indigo-500">{user?.fullName || user?.name || "Player"}</span> 🎮
           </h1>
           <p className="text-xs theme-subtext mt-1">
             Ready for your next tournament? Check your active matches and registered slots below.
@@ -34,7 +60,7 @@ export const ParticipantDashboard = () => {
         </Link>
       </div>
 
-      {/* Stats Cards Row (Stretches Full Width) */}
+      {/* Stats Cards Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full">
         {recentStats.map((stat, idx) => (
           <div key={idx} className="theme-card border theme-border p-5 rounded-2xl flex items-center justify-between shadow-xs">
@@ -49,36 +75,44 @@ export const ParticipantDashboard = () => {
         ))}
       </div>
 
-      {/* Two Column Layout (Full Width Grid) */}
+      {/* Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
-        {/* Upcoming Schedule (2 Cols) */}
+        {/* Upcoming Schedule */}
         <div className="lg:col-span-2 theme-card border theme-border p-6 rounded-2xl space-y-4">
           <div className="flex items-center justify-between border-b theme-border pb-3">
             <h2 className="text-sm font-bold theme-text">Upcoming Scheduled Matches</h2>
             <span className="text-[10px] font-bold text-indigo-500 bg-indigo-500/10 px-2.5 py-1 rounded-md">Live Sync</span>
           </div>
 
-          <div className="space-y-3">
-            {upcomingMatches.map((m) => (
-              <div key={m.id} className="theme-icon-box border theme-border p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-md">
-                      {m.game}
-                    </span>
-                    <h3 className="text-xs font-bold theme-text">{m.tournament}</h3>
+          {loading ? (
+            <div className="p-8 text-center text-xs theme-subtext">Loading scheduled matches...</div>
+          ) : upcomingMatches.length === 0 ? (
+            <div className="p-8 text-center text-xs theme-subtext">
+              No upcoming scheduled matches found. Register for a tournament to get started!
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {upcomingMatches.map((m) => (
+                <div key={m._id || m.id} className="theme-icon-box border theme-border p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-md">
+                        {m.game || "Esports"}
+                      </span>
+                      <h3 className="text-xs font-bold theme-text">{m.tournamentTitle || m.tournament}</h3>
+                    </div>
+                    <p className="text-[11px] theme-subtext">vs <span className="theme-text font-semibold">{m.opponent || "TBD"}</span></p>
                   </div>
-                  <p className="text-[11px] theme-subtext">vs <span className="theme-text font-semibold">{m.opponent}</span></p>
+                  <div className="text-left sm:text-right">
+                    <span className="text-xs font-bold text-amber-500">{m.time || "TBA"}</span>
+                  </div>
                 </div>
-                <div className="text-left sm:text-right">
-                  <span className="text-xs font-bold text-amber-500">{m.time}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Quick Notice Card (1 Col) */}
+        {/* Arena Rules */}
         <div className="theme-card border theme-border p-6 rounded-2xl space-y-4 flex flex-col justify-between">
           <div>
             <h2 className="text-sm font-bold theme-text border-b theme-border pb-3">Arena Rules & Guidelines</h2>

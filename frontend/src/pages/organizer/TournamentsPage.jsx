@@ -16,10 +16,13 @@ export function TournamentsPage() {
 
   const loadTournaments = async () => {
     try {
-      const data = await tournamentService.getAll();
-      setTournaments(data);
+      const response = await tournamentService.getAll();
+      // Handle array payload (res.data or direct array)
+      const dataList = Array.isArray(response) ? response : response?.data || response?.tournaments || [];
+      setTournaments(dataList);
     } catch (err) {
       console.error('Failed to load tournaments:', err);
+      setTournaments([]);
     } finally {
       setLoading(false);
     }
@@ -82,7 +85,7 @@ export function TournamentsPage() {
       {/* Tournaments List */}
       {loading ? (
         <div className="theme-card p-8 text-center rounded-2xl border">
-          <p className="text-sm theme-subtext">Loading tournaments...</p>
+          <p className="text-sm theme-subtext">Loading live tournaments from server...</p>
         </div>
       ) : filteredTournaments.length === 0 ? (
         <div className="theme-card p-12 text-center rounded-2xl border flex flex-col items-center justify-center space-y-3">
@@ -94,46 +97,49 @@ export function TournamentsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTournaments.map((t) => (
-            <div
-              key={t.id}
-              onClick={() => navigate(`/organizer/tournaments/${t.id}`)}
-              className="theme-card p-5 rounded-2xl border shadow-xs hover:border-indigo-500/50 cursor-pointer transition-all space-y-4 flex flex-col justify-between"
-            >
-              <div className="space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded-md">
-                    {t.game}
-                  </span>
-                  <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full capitalize ${
-                    t.status?.toLowerCase() === 'upcoming'
-                      ? 'bg-amber-500/10 text-amber-500'
-                      : t.status?.toLowerCase() === 'draft'
-                      ? 'bg-zinc-500/10 text-zinc-400'
-                      : 'bg-emerald-500/10 text-emerald-500'
-                  }`}>
-                    {t.status || 'Upcoming'}
-                  </span>
+          {filteredTournaments.map((t) => {
+            const tournamentId = t._id || t.id;
+            return (
+              <div
+                key={tournamentId}
+                onClick={() => navigate(`/organizer/tournaments/${tournamentId}`)}
+                className="theme-card p-5 rounded-2xl border shadow-xs hover:border-indigo-500/50 cursor-pointer transition-all space-y-4 flex flex-col justify-between"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded-md">
+                      {t.game || 'Esports'}
+                    </span>
+                    <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full capitalize ${
+                      t.status?.toLowerCase() === 'upcoming'
+                        ? 'bg-amber-500/10 text-amber-500'
+                        : t.status?.toLowerCase() === 'draft'
+                        ? 'bg-zinc-500/10 text-zinc-400'
+                        : 'bg-emerald-500/10 text-emerald-500'
+                    }`}>
+                      {t.status || 'Upcoming'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-base font-bold theme-text line-clamp-1">{t.title || t.name}</h3>
+                    <p className="text-xs theme-subtext line-clamp-2 mt-1">{t.description || 'No description provided.'}</p>
+                  </div>
                 </div>
 
-                <div>
-                  <h3 className="text-base font-bold theme-text line-clamp-1">{t.title || t.name}</h3>
-                  <p className="text-xs theme-subtext line-clamp-2 mt-1">{t.description || 'No description provided.'}</p>
+                <div className="space-y-2 pt-3 border-t" style={{ borderColor: 'var(--border-color)' }}>
+                  <div className="flex items-center justify-between text-xs theme-subtext">
+                    <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Start: {t.startDate ? new Date(t.startDate).toLocaleDateString() : 'TBA'}</span>
+                    <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Max: {t.maxParticipants || t.maxTeams || 16}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs font-bold theme-text pt-1">
+                    <span>Prize Pool</span>
+                    <span className="text-indigo-500">₹{(Number(t.totalPrizePool) || 0).toLocaleString('en-IN')}</span>
+                  </div>
                 </div>
               </div>
-
-              <div className="space-y-2 pt-3 border-t" style={{ borderColor: 'var(--border-color)' }}>
-                <div className="flex items-center justify-between text-xs theme-subtext">
-                  <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Start: {t.startDate || 'TBA'}</span>
-                  <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Max: {t.maxParticipants || 16}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs font-bold theme-text pt-1">
-                  <span>Prize Pool</span>
-                  <span className="text-indigo-500">₹{(Number(t.totalPrizePool) || 0).toLocaleString('en-IN')}</span>
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
