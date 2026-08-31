@@ -6,6 +6,9 @@ import authRoutes from './routes/authRoutes.js'
 import cookieParser from 'cookie-parser'
 import organizerRoutes from './routes/organizerRoutes.js'
 import cors from 'cors'
+import registrationRoutes from "./routes/registrationRoutes.js";
+
+app.use("/api/v1", registrationRoutes);
 
 const app = express();
 
