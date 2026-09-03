@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { tournamentService } from '../../services/tournamentService';
+import { useTournaments } from '../../context/TournamentContext';
 import { Plus, Search, Calendar, Users, Trophy, Filter } from 'lucide-react';
 
 export function TournamentsPage() {
   const navigate = useNavigate();
+  const context = useTournaments ? useTournaments() : null;
+  const contextTournaments = context?.tournaments;
+
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -16,19 +20,49 @@ export function TournamentsPage() {
 
   const loadTournaments = async () => {
     try {
-      const response = await tournamentService.getAll();
-      // Handle array payload (res.data or direct array)
-      const dataList = Array.isArray(response) ? response : response?.data || response?.tournaments || [];
-      setTournaments(dataList);
+      let apiData = [];
+
+      if (tournamentService && typeof tournamentService.getAll === 'function') {
+        const fetchFn = tournamentService.getMy || tournamentService.getOrganizerTournaments || tournamentService.getAll;
+        const response = await fetchFn();
+
+        if (Array.isArray(response)) {
+          apiData = response;
+        } else if (Array.isArray(response?.data)) {
+          apiData = response.data;
+        } else if (Array.isArray(response?.tournaments)) {
+          apiData = response.tournaments;
+        } else if (Array.isArray(response?.data?.tournaments)) {
+          apiData = response.data.tournaments;
+        }
+      }
+
+      // Sync both localStorage keys
+      const local1 = JSON.parse(localStorage.getItem('nexus_tournaments') || '[]');
+      const local2 = JSON.parse(localStorage.getItem('my_tournaments') || '[]');
+
+      const combinedMap = new Map();
+      [...local1, ...local2, ...apiData].forEach(item => {
+        const id = item._id || item.id || item.title || item.name;
+        if (id) combinedMap.set(id, item);
+      });
+
+      setTournaments(Array.from(combinedMap.values()));
     } catch (err) {
       console.error('Failed to load tournaments:', err);
-      setTournaments([]);
+      const local1 = JSON.parse(localStorage.getItem('nexus_tournaments') || '[]');
+      const local2 = JSON.parse(localStorage.getItem('my_tournaments') || '[]');
+      setTournaments([...local1, ...local2]);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredTournaments = tournaments.filter((t) => {
+  const sourceList = (Array.isArray(contextTournaments) && contextTournaments.length > 0)
+    ? contextTournaments
+    : tournaments;
+
+  const filteredTournaments = sourceList.filter((t) => {
     const titleMatch = (t.title || t.name || '').toLowerCase().includes(searchQuery.toLowerCase());
     const gameMatch = (t.game || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSearch = titleMatch || gameMatch;
@@ -36,6 +70,10 @@ export function TournamentsPage() {
     if (filterStatus === 'All') return matchesSearch;
     return matchesSearch && (t.status || '').toLowerCase() === filterStatus.toLowerCase();
   });
+
+  const getPrizeAmount = (t) => {
+    return Number(t.totalPrizePool) || Number(t.prizePool) || 0;
+  };
 
   return (
     <div className="space-y-6">
@@ -75,7 +113,7 @@ export function TournamentsPage() {
           >
             <option value="All">All Statuses</option>
             <option value="Upcoming">Upcoming</option>
-            <option value="Active">Active</option>
+            <option value="Published">Published</option>
             <option value="Draft">Draft</option>
             <option value="Completed">Completed</option>
           </select>
@@ -85,7 +123,7 @@ export function TournamentsPage() {
       {/* Tournaments List */}
       {loading ? (
         <div className="theme-card p-8 text-center rounded-2xl border">
-          <p className="text-sm theme-subtext">Loading live tournaments from server...</p>
+          <p className="text-sm theme-subtext">Loading live tournaments...</p>
         </div>
       ) : filteredTournaments.length === 0 ? (
         <div className="theme-card p-12 text-center rounded-2xl border flex flex-col items-center justify-center space-y-3">
@@ -97,8 +135,10 @@ export function TournamentsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTournaments.map((t) => {
-            const tournamentId = t._id || t.id;
+          {filteredTournaments.map((t, idx) => {
+            const tournamentId = t._id || t.id || `tourn-${idx}`;
+            const status = (t.status || 'published').toLowerCase();
+
             return (
               <div
                 key={tournamentId}
@@ -111,13 +151,13 @@ export function TournamentsPage() {
                       {t.game || 'Esports'}
                     </span>
                     <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full capitalize ${
-                      t.status?.toLowerCase() === 'upcoming'
+                      status === 'upcoming'
                         ? 'bg-amber-500/10 text-amber-500'
-                        : t.status?.toLowerCase() === 'draft'
+                        : status === 'draft'
                         ? 'bg-zinc-500/10 text-zinc-400'
                         : 'bg-emerald-500/10 text-emerald-500'
                     }`}>
-                      {t.status || 'Upcoming'}
+                      {t.status || 'Published'}
                     </span>
                   </div>
 
@@ -134,7 +174,7 @@ export function TournamentsPage() {
                   </div>
                   <div className="flex items-center justify-between text-xs font-bold theme-text pt-1">
                     <span>Prize Pool</span>
-                    <span className="text-indigo-500">₹{(Number(t.totalPrizePool) || 0).toLocaleString('en-IN')}</span>
+                    <span className="text-indigo-500">₹{getPrizeAmount(t).toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               </div>

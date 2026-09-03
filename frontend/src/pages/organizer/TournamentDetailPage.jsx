@@ -12,9 +12,32 @@ export function TournamentDetailPage() {
 
   const fetchDetail = useCallback(async () => {
     try {
-      const res = await tournamentService.getById(id);
-      const data = res?.data || res?.tournament || res;
-      setTournament(data);
+      let data = null;
+
+      // 1. Try API Call
+      if (tournamentService && typeof tournamentService.getById === 'function') {
+        try {
+          const res = await tournamentService.getById(id);
+          data = res?.data || res?.tournament || res;
+        } catch (apiErr) {
+          console.warn('Backend API fetch failed, checking LocalStorage...', apiErr);
+        }
+      }
+
+      // 2. LocalStorage Fallback if API response is empty/failed
+      if (!data || (!data._id && !data.id)) {
+        const local1 = JSON.parse(localStorage.getItem('nexus_tournaments') || '[]');
+        const local2 = JSON.parse(localStorage.getItem('my_tournaments') || '[]');
+        const allLocal = [...local1, ...local2];
+
+        data = allLocal.find((t) => String(t._id || t.id) === String(id));
+      }
+
+      if (data) {
+        setTournament(data);
+      } else {
+        toast.error('Failed to load tournament details');
+      }
     } catch (err) {
       console.error('Error fetching detail:', err);
       toast.error('Failed to load tournament details');
@@ -30,7 +53,20 @@ export function TournamentDetailPage() {
   const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete this tournament?')) {
       try {
-        await tournamentService.delete(id);
+        if (tournamentService && typeof tournamentService.delete === 'function') {
+          await tournamentService.delete(id);
+        }
+
+        // Clean up from localStorage as well
+        const local1 = JSON.parse(localStorage.getItem('nexus_tournaments') || '[]');
+        const local2 = JSON.parse(localStorage.getItem('my_tournaments') || '[]');
+
+        const filtered1 = local1.filter((t) => String(t._id || t.id) !== String(id));
+        const filtered2 = local2.filter((t) => String(t._id || t.id) !== String(id));
+
+        localStorage.setItem('nexus_tournaments', JSON.stringify(filtered1));
+        localStorage.setItem('my_tournaments', JSON.stringify(filtered2));
+
         toast.success('Tournament deleted successfully');
         navigate('/organizer/tournaments');
       } catch (err) {
@@ -64,6 +100,7 @@ export function TournamentDetailPage() {
   }
 
   const registeredSlots = tournament.participants?.length || tournament.teamsCount || 0;
+  const prizePoolAmount = Number(tournament.totalPrizePool) || Number(tournament.prizePool) || 0;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -116,7 +153,7 @@ export function TournamentDetailPage() {
             <span className="text-[10px] font-bold uppercase theme-subtext flex items-center gap-1">
               <Trophy className="w-3.5 h-3.5 text-amber-500" /> Prize Pool
             </span>
-            <p className="text-lg font-bold text-indigo-500 mt-1">₹{(Number(tournament.totalPrizePool) || 0).toLocaleString('en-IN')}</p>
+            <p className="text-lg font-bold text-indigo-500 mt-1">₹{prizePoolAmount.toLocaleString('en-IN')}</p>
           </div>
 
           <div className="p-3.5 rounded-xl border bg-indigo-500/5" style={{ borderColor: 'var(--border-color)' }}>

@@ -43,6 +43,21 @@ import { UnauthorizedPage } from "./pages/UnauthorizedPage.jsx";
 import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage.jsx";
 import { ResetPasswordPage } from "./pages/auth/ResetPasswordPage";
 
+// Fallback components jab tak aap separate file create na kar lein
+const HistoryPage = () => (
+  <div className="p-6">
+    <h1 className="text-2xl font-bold">Tournament History</h1>
+    <p className="text-gray-400">Past tournament records.</p>
+  </div>
+);
+
+const SponsorsPage = () => (
+  <div className="p-6">
+    <h1 className="text-2xl font-bold">Sponsors</h1>
+    <p className="text-gray-400">Manage event sponsors.</p>
+  </div>
+);
+
 function App() {
   return (
     <ThemeProvider>
@@ -109,6 +124,7 @@ function App() {
                 }
               />
 
+              {/* ORGANIZER ROUTES */}
               <Route
                 path="/organizer/*"
                 element={
@@ -132,11 +148,13 @@ function App() {
                           element={<TournamentDetailPage />}
                         />
 
+                        <Route path="history" element={<HistoryPage />} />
+
+                        <Route path="sponsors" element={<SponsorsPage />} />
+
                         <Route path="profile" element={<ProfilePage />} />
 
                         <Route path="settings" element={<SettingsPage />} />
-
-                        {/* your existing history/sponsors routes */}
 
                         <Route
                           path="*"

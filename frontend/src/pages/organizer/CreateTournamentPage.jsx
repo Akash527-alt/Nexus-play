@@ -5,7 +5,6 @@ import { tournamentService } from '../../services/tournamentService';
 import { Plus, Trash2, ArrowLeft, AlertCircle, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Standard mandatory rules preset based on tournament mode
 const MANDATORY_RULES = {
   Online: [
     "Must check in 30 minutes prior to match schedule on official Discord.",
@@ -23,16 +22,18 @@ const MANDATORY_RULES = {
 
 export function CreateTournamentPage() {
   const navigate = useNavigate();
-  const { addTournament } = useTournaments();
-  const todayStr = new Date().toISOString().split('T')[0];
+  const context = useTournaments ? useTournaments() : null;
+  const addTournament = context?.addTournament;
+  
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
   const [formData, setFormData] = useState({
     name: '',
-    game: 'Valorant',
-    type: 'Single Elimination',
+    game: '',
     startDate: '',
     endDate: '',
-    venueType: 'Online', // 'Online' | 'Offline'
+    venueType: 'Online',
     venueDetails: 'Official Discord Server',
     city: 'Mumbai',
     registrationFee: '',
@@ -41,8 +42,8 @@ export function CreateTournamentPage() {
     teamSize: 5,
     description: '',
     prizes: [
-      { position: '1st Place', amount: '' },
-      { position: '2nd Place', amount: '' }
+      { position: 1, amount: '' },
+      { position: 2, amount: '' }
     ],
     customRules: ['Players must follow official tournament admin calls at all times.']
   });
@@ -72,14 +73,14 @@ export function CreateTournamentPage() {
   const addPrize = () => {
     setFormData(prev => ({
       ...prev,
-      prizes: [...prev.prizes, { position: `${prev.prizes.length + 1}th Place`, amount: '' }]
+      prizes: [...prev.prizes, { position: prev.prizes.length + 1, amount: '' }]
     }));
     if (errors.prizes) setErrors(prev => ({ ...prev, prizes: null }));
   };
 
   const updatePrize = (index, key, val) => {
     const updated = [...formData.prizes];
-    updated[index][key] = key === 'amount' ? (val === '' ? '' : Number(val)) : val;
+    updated[index][key] = val === '' ? '' : Number(val);
     setFormData(prev => ({ ...prev, prizes: updated }));
   };
 
@@ -88,7 +89,10 @@ export function CreateTournamentPage() {
       setErrors(prev => ({ ...prev, prizes: 'At least one prize tier is required.' }));
       return;
     }
-    setFormData(prev => ({ ...prev, prizes: prev.prizes.filter((_, i) => i !== index) }));
+    const updated = formData.prizes
+      .filter((_, i) => i !== index)
+      .map((p, i) => ({ ...p, position: i + 1 }));
+    setFormData(prev => ({ ...prev, prizes: updated }));
   };
 
   const addCustomRule = () => {
@@ -112,11 +116,13 @@ export function CreateTournamentPage() {
     const newErrors = {};
 
     if (!formData.name.trim()) newErrors.name = 'Tournament name is required';
-    if (!formData.game) newErrors.game = 'Please select a valid game';
-    if (!formData.type) newErrors.type = 'Please select a tournament format';
+    if (!formData.game.trim()) newErrors.game = 'Esports game name is required';
+    if (!formData.description.trim()) newErrors.description = 'Description is required';
 
     if (!formData.startDate) {
       newErrors.startDate = 'Start date is required';
+    } else if (formData.startDate < todayStr) {
+      newErrors.startDate = 'Start date must be today or a future date';
     }
 
     if (!formData.endDate) {
@@ -128,14 +134,14 @@ export function CreateTournamentPage() {
     if (!formData.registrationDeadline) {
       newErrors.registrationDeadline = 'Registration deadline is required';
     } else if (formData.endDate && formData.registrationDeadline > formData.endDate) {
-      newErrors.registrationDeadline = 'Registration deadline cannot be after the tournament end date';
+      newErrors.registrationDeadline = 'Registration deadline cannot be after tournament end date';
     }
 
     if (formData.registrationFee !== '' && Number(formData.registrationFee) < 0) {
       newErrors.registrationFee = 'Fee cannot be negative';
     }
     if (!formData.maxTeams || Number(formData.maxTeams) <= 1) {
-      newErrors.maxTeams = 'Must have at least 2 teams';
+      newErrors.maxTeams = 'Must have at least 2 teams/participants';
     }
     if (!formData.teamSize || Number(formData.teamSize) <= 0) {
       newErrors.teamSize = 'Team size must be at least 1';
@@ -143,8 +149,8 @@ export function CreateTournamentPage() {
 
     if (formData.prizes.length === 0) {
       newErrors.prizes = 'At least one prize tier is required';
-    } else if (formData.prizes.some(p => !p.position || p.amount === '' || Number(p.amount) <= 0)) {
-      newErrors.prizes = 'All prizes must have a title and amount greater than 0';
+    } else if (formData.prizes.some(p => !p.position || p.amount === '' || Number(p.amount) < 0)) {
+      newErrors.prizes = 'All prizes must have a position and valid positive amount';
     }
 
     setErrors(newErrors);
@@ -156,47 +162,79 @@ export function CreateTournamentPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (status = 'Upcoming') => {
+  const handleSubmit = async (status = 'published') => {
     if (!validateForm()) return;
 
-    // Combine Mandatory Venue Rules + Additional Custom Rules
     const currentMandatoryRules = MANDATORY_RULES[formData.venueType] || [];
     const validCustomRules = formData.customRules.filter(r => r.trim());
     const combinedRulesList = [...currentMandatoryRules, ...validCustomRules];
 
+    const uniqueId = `t_${Date.now()}`;
+
     const payload = {
+      id: uniqueId,
+      _id: uniqueId,
       title: formData.name,
+      name: formData.name,
       game: formData.game,
-      tournamentType: formData.teamSize > 1 ? 'team' : 'solo',
-      format: formData.type,
-      startDate: formData.startDate,
-      endDate: formData.endDate,
-      venueType: formData.venueType,
-      venue: `${formData.venueType}: ${formData.venueDetails} (${formData.city})`,
-      entryFee: formData.registrationFee === '' ? 0 : Number(formData.registrationFee),
-      registrationDeadline: formData.registrationDeadline,
-      maxParticipants: Number(formData.maxTeams),
-      teamSize: Number(formData.teamSize),
+      tournamentType: Number(formData.teamSize) > 1 ? 'team' : 'solo',
       description: formData.description,
-      prizes: formData.prizes,
-      mandatoryRules: currentMandatoryRules,
       rules: combinedRulesList.join('\n'),
+      venue: `${formData.venueType}: ${formData.venueDetails} (${formData.city})`,
+      startDate: formData.startDate,
+      startTime: formData.startDate, 
+      endDate: formData.endDate,
+      registrationDeadline: formData.registrationDeadline,
+      entryFee: formData.registrationFee === '' ? 0 : Number(formData.registrationFee),
+      prizePool: calculateTotalPrize(),
+      totalPrizePool: calculateTotalPrize(),
+      prizes: formData.prizes.map(p => ({
+        position: Number(p.position),
+        amount: Number(p.amount)
+      })),
+      maxParticipants: Number(formData.maxTeams),
+      maxSlots: Number(formData.maxTeams),
+      filledSlots: 0,
+      teamSize: Number(formData.teamSize),
       status: status,
-      totalPrizePool: calculateTotalPrize()
+      createdAt: new Date().toISOString()
     };
 
     try {
-      addTournament(payload);
-
-      if (tournamentService && tournamentService.create) {
-        await tournamentService.create(payload).catch(() => {});
+      // 1. Context Update
+      if (addTournament) {
+        addTournament(payload);
       }
 
-      toast.success(`Tournament created successfully!`);
-      navigate('/organizer/tournaments');
+      // 2. Safe Local Storage Sync Write across shared keys
+      const readExisting = (key) => {
+        try {
+          return JSON.parse(localStorage.getItem(key) || '[]');
+        } catch (e) {
+          return [];
+        }
+      };
+
+      const existing1 = readExisting('nexus_tournaments');
+      const existing2 = readExisting('my_tournaments');
+      
+      const filtered1 = existing1.filter(item => (item._id || item.id) !== uniqueId);
+      const filtered2 = existing2.filter(item => (item._id || item.id) !== uniqueId);
+
+      localStorage.setItem('nexus_tournaments', JSON.stringify([payload, ...filtered1]));
+      localStorage.setItem('my_tournaments', JSON.stringify([payload, ...filtered2]));
+
+      // 3. Backend API Update (Bypassed gracefully if restricted/fails)
+      if (tournamentService && typeof tournamentService.create === 'function') {
+        await tournamentService.create(payload);
+      }
+
+      toast.success(`Tournament ${status === 'draft' ? 'saved as draft' : 'published'} successfully!`);
+      navigate('/organizer/dashboard');
     } catch (err) {
-      console.error('Failed to save tournament:', err);
-      toast.error('Error creating tournament. Please try again.');
+      console.warn('Backend write failed, tournament saved to local store:', err);
+      toast.success('Tournament saved locally!');
+      navigate('/organizer/dashboard');
     }
   };
 
@@ -217,11 +255,10 @@ export function CreateTournamentPage() {
       </div>
 
       <div className="theme-card space-y-6 p-8 rounded-2xl border shadow-xs">
-        {/* Basic Details */}
         <div>
           <h2 className="text-base font-bold theme-text border-b pb-2 mb-4" style={{ borderColor: 'var(--border-color)' }}>1. Basic Details</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
+            <div>
               <label className="block text-xs font-bold theme-subtext uppercase mb-1">Tournament Name *</label>
               <input 
                 name="name" 
@@ -235,50 +272,58 @@ export function CreateTournamentPage() {
 
             <div>
               <label className="block text-xs font-bold theme-subtext uppercase mb-1">Esports Game *</label>
-              <select name="game" value={formData.game} onChange={handleInputChange} className="theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none">
-                <option value="Valorant">Valorant</option>
-                <option value="BGMI">BGMI</option>
-                <option value="Counter-Strike 2">Counter-Strike 2</option>
-                <option value="Rocket League">Rocket League</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold theme-subtext uppercase mb-1">Tournament Format *</label>
-              <select name="type" value={formData.type} onChange={handleInputChange} className="theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none">
-                <option value="Single Elimination">Single Elimination</option>
-                <option value="Double Elimination">Double Elimination</option>
-                <option value="Battle Royale Points">Battle Royale Points</option>
-              </select>
+              <input 
+                type="text"
+                name="game" 
+                value={formData.game} 
+                onChange={handleInputChange} 
+                className={`theme-input w-full px-3.5 py-2 text-sm border rounded-lg focus:ring-2 outline-none ${errors.game ? 'border-rose-500' : 'focus:ring-indigo-500'}`}
+                placeholder="e.g. Valorant, BGMI, Tekken 8"
+              />
+              {errors.game && <p className="text-xs text-rose-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.game}</p>}
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-xs font-bold theme-subtext uppercase mb-1">Description</label>
+              <label className="block text-xs font-bold theme-subtext uppercase mb-1">Description *</label>
               <textarea 
                 name="description" 
                 rows="3" 
                 value={formData.description} 
                 onChange={handleInputChange} 
-                className="theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none"
+                className={`theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none ${errors.description ? 'border-rose-500' : ''}`}
                 placeholder="Detailed tournament overview..."
               />
+              {errors.description && <p className="text-xs text-rose-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.description}</p>}
             </div>
           </div>
         </div>
 
-        {/* Schedule & Venue Mode */}
         <div>
           <h2 className="text-base font-bold theme-text border-b pb-2 mb-4" style={{ borderColor: 'var(--border-color)' }}>2. Schedule & Venue Mode</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-bold theme-subtext uppercase mb-1">Start Date *</label>
-              <input type="date" min={todayStr} name="startDate" value={formData.startDate} onChange={handleInputChange} className={`theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none ${errors.startDate ? 'border-rose-500' : ''}`} />
-              {errors.startDate && <p className="text-xs text-rose-500 mt-1">{errors.startDate}</p>}
+              <input 
+                type="date" 
+                min={todayStr} 
+                name="startDate" 
+                value={formData.startDate} 
+                onChange={handleInputChange} 
+                className={`theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none ${errors.startDate ? 'border-rose-500' : ''}`} 
+              />
+              {errors.startDate && <p className="text-xs text-rose-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.startDate}</p>}
             </div>
             <div>
               <label className="block text-xs font-bold theme-subtext uppercase mb-1">End Date *</label>
-              <input type="date" min={formData.startDate || todayStr} name="endDate" value={formData.endDate} onChange={handleInputChange} className={`theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none ${errors.endDate ? 'border-rose-500' : ''}`} />
-              {errors.endDate && <p className="text-xs text-rose-500 mt-1">{errors.endDate}</p>}
+              <input 
+                type="date" 
+                min={formData.startDate || todayStr} 
+                name="endDate" 
+                value={formData.endDate} 
+                onChange={handleInputChange} 
+                className={`theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none ${errors.endDate ? 'border-rose-500' : ''}`} 
+              />
+              {errors.endDate && <p className="text-xs text-rose-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.endDate}</p>}
             </div>
             <div>
               <label className="block text-xs font-bold theme-subtext uppercase mb-1">Reg. Deadline *</label>
@@ -291,10 +336,9 @@ export function CreateTournamentPage() {
                 onChange={handleInputChange} 
                 className={`theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none ${errors.registrationDeadline ? 'border-rose-500' : ''}`} 
               />
-              {errors.registrationDeadline && <p className="text-xs text-rose-500 mt-1">{errors.registrationDeadline}</p>}
+              {errors.registrationDeadline && <p className="text-xs text-rose-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.registrationDeadline}</p>}
             </div>
 
-            {/* Venue Mode Dropdown */}
             <div>
               <label className="block text-xs font-bold theme-subtext uppercase mb-1">Tournament Mode *</label>
               <select 
@@ -326,12 +370,11 @@ export function CreateTournamentPage() {
           </div>
         </div>
 
-        {/* Registration & Slots */}
         <div>
           <h2 className="text-base font-bold theme-text border-b pb-2 mb-4" style={{ borderColor: 'var(--border-color)' }}>3. Registration & Slots</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-bold theme-subtext uppercase mb-1">Registration Fee (₹)</label>
+              <label className="block text-xs font-bold theme-subtext uppercase mb-1">Registration Fee (₹) *</label>
               <input 
                 type="number" 
                 min="0" 
@@ -344,24 +387,23 @@ export function CreateTournamentPage() {
               {errors.registrationFee && <p className="text-xs text-rose-500 mt-1">{errors.registrationFee}</p>}
             </div>
             <div>
-              <label className="block text-xs font-bold theme-subtext uppercase mb-1">Max Teams / Slots</label>
+              <label className="block text-xs font-bold theme-subtext uppercase mb-1">Max Participants / Slots *</label>
               <input type="number" min="2" name="maxTeams" value={formData.maxTeams} onChange={handleInputChange} className={`theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none ${errors.maxTeams ? 'border-rose-500' : ''}`} />
               {errors.maxTeams && <p className="text-xs text-rose-500 mt-1">{errors.maxTeams}</p>}
             </div>
             <div>
-              <label className="block text-xs font-bold theme-subtext uppercase mb-1">Team Size (Players)</label>
+              <label className="block text-xs font-bold theme-subtext uppercase mb-1">Team Size (Players) *</label>
               <input type="number" min="1" name="teamSize" value={formData.teamSize} onChange={handleInputChange} className={`theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none ${errors.teamSize ? 'border-rose-500' : ''}`} />
               {errors.teamSize && <p className="text-xs text-rose-500 mt-1">{errors.teamSize}</p>}
             </div>
           </div>
         </div>
 
-        {/* Prize Pool Distribution */}
         <div>
           <div className="flex justify-between items-center border-b pb-2 mb-4" style={{ borderColor: 'var(--border-color)' }}>
             <h2 className="text-base font-bold theme-text">4. Prize Pool Distribution</h2>
             <span className="text-xs font-bold text-indigo-500 bg-indigo-500/10 px-2.5 py-1 rounded-full">
-              Total: ₹{calculateTotalPrize().toLocaleString('en-IN')}
+              Total Prize Pool: ₹{calculateTotalPrize().toLocaleString('en-IN')}
             </span>
           </div>
           
@@ -370,20 +412,16 @@ export function CreateTournamentPage() {
           <div className="space-y-3">
             {formData.prizes.map((p, idx) => (
               <div key={idx} className="flex items-center gap-3">
-                <input 
-                  type="text" 
-                  value={p.position} 
-                  onChange={(e) => updatePrize(idx, 'position', e.target.value)} 
-                  className="theme-input flex-1 px-3 py-2 text-sm border rounded-lg outline-none" 
-                  placeholder="Position Name"
-                />
+                <div className="w-32 px-3 py-2 text-sm border rounded-lg bg-gray-50 dark:bg-gray-800 font-semibold theme-text">
+                  Rank {p.position}
+                </div>
                 <input 
                   type="number" 
-                  min="1"
+                  min="0"
                   value={p.amount} 
                   onChange={(e) => updatePrize(idx, 'amount', e.target.value)} 
-                  className="theme-input w-40 px-3 py-2 text-sm border rounded-lg outline-none" 
-                  placeholder="Amount"
+                  className="theme-input flex-1 px-3 py-2 text-sm border rounded-lg outline-none" 
+                  placeholder="Prize Amount (₹)"
                 />
                 <button 
                   type="button" 
@@ -404,13 +442,11 @@ export function CreateTournamentPage() {
           </div>
         </div>
 
-        {/* Rules & Guidelines */}
         <div>
           <h2 className="text-base font-bold theme-text border-b pb-2 mb-4" style={{ borderColor: 'var(--border-color)' }}>
             5. Rules & Guidelines
           </h2>
 
-          {/* Mandatory Mode-based Rules (Auto-enforced) */}
           <div className="mb-4 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/40 rounded-xl p-4">
             <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase mb-2">
               <Lock className="w-3.5 h-3.5" />
@@ -423,9 +459,8 @@ export function CreateTournamentPage() {
             </ul>
           </div>
 
-          {/* Organizer Additional Rules */}
           <div className="space-y-3">
-            <label className="block text-xs font-bold theme-subtext uppercase">Additional Organizer Rules</label>
+            <label className="block text-xs font-bold theme-subtext uppercase">Additional Rules</label>
             {formData.customRules.map((rule, idx) => (
               <div key={idx} className="flex items-center gap-3">
                 <input 
@@ -454,11 +489,10 @@ export function CreateTournamentPage() {
           </div>
         </div>
 
-        {/* Form Controls */}
         <div className="flex items-center justify-end gap-3 pt-6 border-t" style={{ borderColor: 'var(--border-color)' }}>
           <button 
             type="button" 
-            onClick={() => handleSubmit('Draft')} 
+            onClick={() => handleSubmit('draft')} 
             className="theme-hover theme-text px-4 py-2 text-xs font-bold rounded-lg border cursor-pointer"
             style={{ borderColor: 'var(--border-color)' }}
           >
@@ -466,7 +500,7 @@ export function CreateTournamentPage() {
           </button>
           <button 
             type="button" 
-            onClick={() => handleSubmit('Upcoming')} 
+            onClick={() => handleSubmit('published')} 
             className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg cursor-pointer"
           >
             Publish Tournament

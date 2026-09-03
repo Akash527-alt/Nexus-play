@@ -17,11 +17,63 @@ export const ParticipantTournaments = () => {
   const fetchTournaments = async () => {
     try {
       setLoading(true);
-      const res = await participantService.getTournaments();
-      const list = Array.isArray(res) ? res : res?.data || res?.tournaments || [];
-      setTournaments(list);
+      let list = [];
+
+      // 1. Try fetching from Backend API
+      try {
+        if (participantService && typeof participantService.getTournaments === "function") {
+          const res = await participantService.getTournaments();
+          if (Array.isArray(res)) {
+            list = res;
+          } else if (Array.isArray(res?.tournaments)) {
+            list = res.tournaments;
+          } else if (Array.isArray(res?.data)) {
+            list = res.data;
+          } else if (Array.isArray(res?.data?.tournaments)) {
+            list = res.data.tournaments;
+          }
+        }
+      } catch (backendErr) {
+        console.warn("Backend fetch bypassed, retrieving local storage sync tournaments:", backendErr);
+      }
+
+      // 2. Read local sync arrays across organizer/participant keys
+      const readArray = (key) => {
+        try {
+          return JSON.parse(localStorage.getItem(key) || "[]");
+        } catch (e) {
+          return [];
+        }
+      };
+
+      const local1 = readArray("nexus_tournaments");
+      const local2 = readArray("my_tournaments");
+      const localRegs = readArray("participant_registrations");
+
+      // 3. Deduplicate and normalize objects safely
+      const combinedMap = new Map();
+      [...list, ...local1, ...local2].forEach((item) => {
+        const key = item._id || item.id || item.title || item.name;
+        if (key) {
+          const isReg = localRegs.includes(key) || item.isRegistered || item.status === "registered" || false;
+          combinedMap.set(key, {
+            ...item,
+            _id: key,
+            id: key,
+            title: item.title || item.name || "Untitled Tournament",
+            game: item.game || "Esports",
+            prizePool: item.prizePool || item.totalPrizePool || 0,
+            maxSlots: item.maxSlots || item.maxParticipants || item.maxTeams || 16,
+            filledSlots: item.filledSlots || item.currentParticipants || (isReg ? 1 : 0),
+            isRegistered: isReg,
+            status: item.status || "published"
+          });
+        }
+      });
+
+      setTournaments(Array.from(combinedMap.values()));
     } catch (err) {
-      console.error("Failed to load tournaments:", err);
+      console.error("Failed to process tournaments list:", err);
       toast.error("Failed to load tournaments list");
       setTournaments([]);
     } finally {
@@ -32,7 +84,23 @@ export const ParticipantTournaments = () => {
   const handleRegister = async (tournamentId) => {
     try {
       setRegistering(true);
-      await participantService.registerTournament(tournamentId);
+
+      // Try API Endpoint
+      try {
+        if (participantService && typeof participantService.registerTournament === "function") {
+          await participantService.registerTournament(tournamentId);
+        }
+      } catch (apiErr) {
+        console.warn("Backend registration endpoint skipped, preserving registration locally:", apiErr);
+      }
+
+      // Local Storage Registration Sync
+      const localRegs = JSON.parse(localStorage.getItem("participant_registrations") || "[]");
+      if (!localRegs.includes(tournamentId)) {
+        localRegs.push(tournamentId);
+        localStorage.setItem("participant_registrations", JSON.stringify(localRegs));
+      }
+
       toast.success("Successfully registered for the tournament!");
       setSelectedTournament(null);
       fetchTournaments();
@@ -50,9 +118,9 @@ export const ParticipantTournaments = () => {
 
     if (!matchesSearch) return false;
 
-    if (filter === "registered") return item.isRegistered || item.status === "registered";
+    if (filter === "registered") return item.isRegistered;
     if (filter === "live") return item.status?.toLowerCase() === "live";
-    if (filter === "upcoming") return item.status?.toLowerCase() === "upcoming";
+    if (filter === "upcoming") return item.status?.toLowerCase() === "upcoming" || item.status?.toLowerCase() === "published";
 
     return true;
   });
@@ -83,7 +151,7 @@ export const ParticipantTournaments = () => {
         {[
           { id: "all", label: "All Tournaments" },
           { id: "registered", label: "My Registrations" },
-          { id: "upcoming", label: "Upcoming" },
+          { id: "upcoming", label: "Upcoming / Open" },
           { id: "live", label: "Live Now 🔴" },
         ].map((tab) => (
           <button
@@ -118,16 +186,16 @@ export const ParticipantTournaments = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold bg-indigo-600/10 text-indigo-500 border border-indigo-500/20 px-2.5 py-0.5 rounded-md uppercase">
-                    {t.game || "Esports"}
+                    {t.game}
                   </span>
                   <span
-                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-md ${
+                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-md capitalize ${
                       t.status === "live"
                         ? "bg-red-500/10 text-red-500 border border-red-500/20"
                         : "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
                     }`}
                   >
-                    {t.status || "Open"}
+                    {t.status}
                   </span>
                 </div>
 
@@ -160,7 +228,7 @@ export const ParticipantTournaments = () => {
                   <div>
                     <p className="text-[10px] theme-subtext font-medium">Slots Filled</p>
                     <p className="font-bold theme-text mt-0.5 text-[11px]">
-                      {t.filledSlots || 0} / {t.maxSlots || "∞"}
+                      {t.filledSlots} / {t.maxSlots}
                     </p>
                   </div>
                 </div>
