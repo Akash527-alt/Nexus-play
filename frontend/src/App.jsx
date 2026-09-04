@@ -32,6 +32,7 @@ import { SettingsPage } from "./pages/organizer/SettingsPage";
 // Participant / Student Pages
 import { ParticipantDashboard } from "./pages/participant/ParticipantDashboard";
 import { ParticipantTournaments } from "./pages/participant/ParticipantTournaments";
+import { ParticipantTournamentDetailPage } from "./pages/participant/ParticipantTournamentDetailPage";
 import { ParticipantHistory } from "./pages/participant/ParticipantHistory";
 import { ParticipantProfilePage } from "./pages/participant/ProfilePage";
 import { ParticipantSettingsPage } from "./pages/participant/SettingsPage";
@@ -43,7 +44,7 @@ import { UnauthorizedPage } from "./pages/UnauthorizedPage.jsx";
 import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage.jsx";
 import { ResetPasswordPage } from "./pages/auth/ResetPasswordPage";
 
-// Fallback components jab tak aap separate file create na kar lein
+// Fallback components
 const HistoryPage = () => (
   <div className="p-6">
     <h1 className="text-2xl font-bold">Tournament History</h1>
@@ -99,6 +100,10 @@ function App() {
                         <Route
                           path="tournaments"
                           element={<ParticipantTournaments />}
+                        />
+                        <Route
+                          path="tournaments/:id"
+                          element={<ParticipantTournamentDetailPage />}
                         />
                         <Route
                           path="history"

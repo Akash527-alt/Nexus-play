@@ -32,12 +32,15 @@ export function CreateTournamentPage() {
     name: '',
     game: '',
     startDate: '',
+    startTime: '10:00',
     endDate: '',
+    endTime: '18:00',
     venueType: 'Online',
     venueDetails: 'Official Discord Server',
     city: 'Mumbai',
     registrationFee: '',
     registrationDeadline: '',
+    registrationDeadlineTime: '23:59',
     maxTeams: 16,
     teamSize: 5,
     description: '',
@@ -112,7 +115,7 @@ export function CreateTournamentPage() {
   const calculateTotalPrize = () => 
     formData.prizes.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-  const validateForm = () => {
+const validateForm = () => {
     const newErrors = {};
 
     if (!formData.name.trim()) newErrors.name = 'Tournament name is required';
@@ -125,16 +128,32 @@ export function CreateTournamentPage() {
       newErrors.startDate = 'Start date must be today or a future date';
     }
 
+    if (!formData.startTime) {
+      newErrors.startTime = 'Start time is required';
+    }
+
     if (!formData.endDate) {
       newErrors.endDate = 'End date is required';
     } else if (formData.startDate && formData.endDate < formData.startDate) {
       newErrors.endDate = 'End date must be on or after start date';
     }
 
+    if (!formData.endTime) {
+      newErrors.endTime = 'End time is required';
+    }
+
+    // --- Strict Registration Deadline vs Tournament End Check ---
     if (!formData.registrationDeadline) {
-      newErrors.registrationDeadline = 'Registration deadline is required';
-    } else if (formData.endDate && formData.registrationDeadline > formData.endDate) {
-      newErrors.registrationDeadline = 'Registration deadline cannot be after tournament end date';
+      newErrors.registrationDeadline = 'Registration deadline date is required';
+    } else if (!formData.registrationDeadlineTime) {
+      newErrors.registrationDeadlineTime = 'Registration deadline time is required';
+    } else if (formData.endDate && formData.endTime) {
+      const regDeadlineDateTime = new Date(`${formData.registrationDeadline}T${formData.registrationDeadlineTime}`);
+      const tournamentEndDateTime = new Date(`${formData.endDate}T${formData.endTime}`);
+
+      if (regDeadlineDateTime >= tournamentEndDateTime) {
+        newErrors.registrationDeadline = 'Registration deadline must be before tournament end time';
+      }
     }
 
     if (formData.registrationFee !== '' && Number(formData.registrationFee) < 0) {
@@ -182,9 +201,11 @@ export function CreateTournamentPage() {
       rules: combinedRulesList.join('\n'),
       venue: `${formData.venueType}: ${formData.venueDetails} (${formData.city})`,
       startDate: formData.startDate,
-      startTime: formData.startDate, 
+      startTime: formData.startTime,
       endDate: formData.endDate,
+      endTime: formData.endTime,
       registrationDeadline: formData.registrationDeadline,
+      registrationDeadlineTime: formData.registrationDeadlineTime,
       entryFee: formData.registrationFee === '' ? 0 : Number(formData.registrationFee),
       prizePool: calculateTotalPrize(),
       totalPrizePool: calculateTotalPrize(),
@@ -201,12 +222,10 @@ export function CreateTournamentPage() {
     };
 
     try {
-      // 1. Context Update
       if (addTournament) {
         addTournament(payload);
       }
 
-      // 2. Safe Local Storage Sync Write across shared keys
       const readExisting = (key) => {
         try {
           return JSON.parse(localStorage.getItem(key) || '[]');
@@ -224,7 +243,6 @@ export function CreateTournamentPage() {
       localStorage.setItem('nexus_tournaments', JSON.stringify([payload, ...filtered1]));
       localStorage.setItem('my_tournaments', JSON.stringify([payload, ...filtered2]));
 
-      // 3. Backend API Update (Bypassed gracefully if restricted/fails)
       if (tournamentService && typeof tournamentService.create === 'function') {
         await tournamentService.create(payload);
       }
@@ -238,59 +256,68 @@ export function CreateTournamentPage() {
     }
   };
 
+  // Uses custom CSS classes directly mapped to index.css
+  const inputStyle = "theme-input w-full px-3.5 py-2 text-sm rounded-lg border outline-none focus:ring-2 focus:ring-indigo-600 transition-all";
+  const boxStyle = "theme-icon-box p-4 rounded-xl border";
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
+      {/* Header */}
       <div className="flex items-center gap-4">
         <button 
           onClick={() => navigate(-1)} 
-          className="theme-hover theme-text flex items-center gap-1 text-sm font-semibold px-3 py-1.5 rounded-lg border cursor-pointer"
-          style={{ borderColor: 'var(--border-color)' }}
+          className="theme-card theme-border theme-text theme-hover flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg border cursor-pointer transition-all shadow-sm"
         >
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
         <div>
-          <h1 className="text-2xl font-bold theme-text">Create New Tournament</h1>
-          <p className="text-sm theme-subtext">Configure parameters, venue mode, and rules.</p>
+          <h1 className="theme-text text-2xl font-bold">Create New Tournament</h1>
+          <p className="theme-subtext text-sm">Configure parameters, venue mode, and rules.</p>
         </div>
       </div>
 
-      <div className="theme-card space-y-6 p-8 rounded-2xl border shadow-xs">
+      {/* Main Container */}
+      <div className="theme-card border space-y-6 p-6 sm:p-8 rounded-2xl shadow-sm">
+        
+        {/* Section 1: Basic Details */}
         <div>
-          <h2 className="text-base font-bold theme-text border-b pb-2 mb-4" style={{ borderColor: 'var(--border-color)' }}>1. Basic Details</h2>
+          <h2 className="theme-text theme-border text-base font-bold border-b pb-2 mb-4">
+            1. Basic Details
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold theme-subtext uppercase mb-1">Tournament Name *</label>
+              <label className="theme-text block text-xs font-bold uppercase mb-1">Tournament Name *</label>
               <input 
                 name="name" 
                 value={formData.name} 
                 onChange={handleInputChange} 
-                className={`theme-input w-full px-3.5 py-2 text-sm border rounded-lg focus:ring-2 outline-none ${errors.name ? 'border-rose-500' : 'focus:ring-indigo-500'}`} 
+                className={`${inputStyle} ${errors.name ? 'border-rose-500' : ''}`} 
                 placeholder="e.g. Nexus Invitational Season 1" 
               />
               {errors.name && <p className="text-xs text-rose-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.name}</p>}
             </div>
 
             <div>
-              <label className="block text-xs font-bold theme-subtext uppercase mb-1">Esports Game *</label>
+              <label className="theme-text block text-xs font-bold uppercase mb-1">Esports Game *</label>
               <input 
                 type="text"
                 name="game" 
                 value={formData.game} 
                 onChange={handleInputChange} 
-                className={`theme-input w-full px-3.5 py-2 text-sm border rounded-lg focus:ring-2 outline-none ${errors.game ? 'border-rose-500' : 'focus:ring-indigo-500'}`}
+                className={`${inputStyle} ${errors.game ? 'border-rose-500' : ''}`}
                 placeholder="e.g. Valorant, BGMI, Tekken 8"
               />
               {errors.game && <p className="text-xs text-rose-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.game}</p>}
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-xs font-bold theme-subtext uppercase mb-1">Description *</label>
+              <label className="theme-text block text-xs font-bold uppercase mb-1">Description *</label>
               <textarea 
                 name="description" 
                 rows="3" 
                 value={formData.description} 
                 onChange={handleInputChange} 
-                className={`theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none ${errors.description ? 'border-rose-500' : ''}`}
+                className={`${inputStyle} ${errors.description ? 'border-rose-500' : ''}`}
                 placeholder="Detailed tournament overview..."
               />
               {errors.description && <p className="text-xs text-rose-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.description}</p>}
@@ -298,83 +325,156 @@ export function CreateTournamentPage() {
           </div>
         </div>
 
+        {/* Section 2: Schedule & Venue Mode */}
         <div>
-          <h2 className="text-base font-bold theme-text border-b pb-2 mb-4" style={{ borderColor: 'var(--border-color)' }}>2. Schedule & Venue Mode</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-bold theme-subtext uppercase mb-1">Start Date *</label>
-              <input 
-                type="date" 
-                min={todayStr} 
-                name="startDate" 
-                value={formData.startDate} 
-                onChange={handleInputChange} 
-                className={`theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none ${errors.startDate ? 'border-rose-500' : ''}`} 
-              />
-              {errors.startDate && <p className="text-xs text-rose-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.startDate}</p>}
-            </div>
-            <div>
-              <label className="block text-xs font-bold theme-subtext uppercase mb-1">End Date *</label>
-              <input 
-                type="date" 
-                min={formData.startDate || todayStr} 
-                name="endDate" 
-                value={formData.endDate} 
-                onChange={handleInputChange} 
-                className={`theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none ${errors.endDate ? 'border-rose-500' : ''}`} 
-              />
-              {errors.endDate && <p className="text-xs text-rose-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.endDate}</p>}
-            </div>
-            <div>
-              <label className="block text-xs font-bold theme-subtext uppercase mb-1">Reg. Deadline *</label>
-              <input 
-                type="date" 
-                min={todayStr} 
-                max={formData.endDate || undefined} 
-                name="registrationDeadline" 
-                value={formData.registrationDeadline} 
-                onChange={handleInputChange} 
-                className={`theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none ${errors.registrationDeadline ? 'border-rose-500' : ''}`} 
-              />
-              {errors.registrationDeadline && <p className="text-xs text-rose-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.registrationDeadline}</p>}
+          <h2 className="theme-text theme-border text-base font-bold border-b pb-2 mb-4">
+            2. Schedule & Venue Mode
+          </h2>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Start Date & Time */}
+              <div className={boxStyle}>
+                <span className="block text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase mb-2">Tournament Start</span>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="theme-subtext block text-[11px] font-semibold uppercase mb-1">Date *</label>
+                    <input 
+                      type="date" 
+                      min={todayStr} 
+                      name="startDate" 
+                      value={formData.startDate} 
+                      onChange={handleInputChange} 
+                      className={`${inputStyle} ${errors.startDate ? 'border-rose-500' : ''}`} 
+                    />
+                    {errors.startDate && <p className="text-xs text-rose-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.startDate}</p>}
+                  </div>
+                  <div>
+                    <label className="theme-subtext block text-[11px] font-semibold uppercase mb-1">Time *</label>
+                    <input 
+                      type="time" 
+                      name="startTime" 
+                      value={formData.startTime} 
+                      onChange={handleInputChange} 
+                      className={`${inputStyle} ${errors.startTime ? 'border-rose-500' : ''}`} 
+                    />
+                    {errors.startTime && <p className="text-xs text-rose-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.startTime}</p>}
+                  </div>
+                </div>
+              </div>
+
+              {/* End Date & Time */}
+              <div className={boxStyle}>
+                <span className="block text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase mb-2">Tournament End</span>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="theme-subtext block text-[11px] font-semibold uppercase mb-1">Date *</label>
+                    <input 
+                      type="date" 
+                      min={formData.startDate || todayStr} 
+                      name="endDate" 
+                      value={formData.endDate} 
+                      onChange={handleInputChange} 
+                      className={`${inputStyle} ${errors.endDate ? 'border-rose-500' : ''}`} 
+                    />
+                    {errors.endDate && <p className="text-xs text-rose-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.endDate}</p>}
+                  </div>
+                  <div>
+                    <label className="theme-subtext block text-[11px] font-semibold uppercase mb-1">Time *</label>
+                    <input 
+                      type="time" 
+                      name="endTime" 
+                      value={formData.endTime} 
+                      onChange={handleInputChange} 
+                      className={`${inputStyle} ${errors.endTime ? 'border-rose-500' : ''}`} 
+                    />
+                    {errors.endTime && <p className="text-xs text-rose-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.endTime}</p>}
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold theme-subtext uppercase mb-1">Tournament Mode *</label>
-              <select 
-                name="venueType" 
-                value={formData.venueType} 
-                onChange={handleVenueTypeChange} 
-                className="theme-input w-full px-3 py-2 text-sm font-semibold border rounded-lg outline-none text-indigo-500"
-              >
-                <option value="Online">Online Tournament</option>
-                <option value="Offline">Offline / LAN Event</option>
-              </select>
+            {/* Registration Deadline */}
+            <div className={boxStyle}>
+              <span className="block text-xs font-bold text-rose-600 dark:text-rose-400 uppercase mb-2">Registration Deadline</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="theme-subtext block text-[11px] font-semibold uppercase mb-1">Date *</label>
+                  <input 
+                    type="date" 
+                    min={todayStr} 
+                    max={formData.endDate || undefined} 
+                    name="registrationDeadline" 
+                    value={formData.registrationDeadline} 
+                    onChange={handleInputChange} 
+                    className={`${inputStyle} ${errors.registrationDeadline ? 'border-rose-500' : ''}`} 
+                  />
+                  {errors.registrationDeadline && <p className="text-xs text-rose-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.registrationDeadline}</p>}
+                </div>
+                <div>
+                  <label className="theme-subtext block text-[11px] font-semibold uppercase mb-1">Time *</label>
+                  <input 
+                    type="time" 
+                    name="registrationDeadlineTime" 
+                    value={formData.registrationDeadlineTime} 
+                    onChange={handleInputChange} 
+                    className={`${inputStyle} ${errors.registrationDeadlineTime ? 'border-rose-500' : ''}`} 
+                  />
+                  {errors.registrationDeadlineTime && <p className="text-xs text-rose-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.registrationDeadlineTime}</p>}
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold theme-subtext uppercase mb-1">Venue Details</label>
-              <input 
-                type="text" 
-                name="venueDetails" 
-                value={formData.venueDetails} 
-                onChange={handleInputChange} 
-                className="theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none" 
-                placeholder={formData.venueType === 'Online' ? 'e.g. Discord / Room Code' : 'e.g. LXG Arena'} 
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold theme-subtext uppercase mb-1">City / Region</label>
-              <input type="text" name="city" value={formData.city} onChange={handleInputChange} className="theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none" placeholder="e.g. Mumbai" />
+            {/* Venue Details */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="theme-text block text-xs font-bold uppercase mb-1">Tournament Mode *</label>
+                <select 
+                  name="venueType" 
+                  value={formData.venueType} 
+                  onChange={handleVenueTypeChange} 
+                  className={`${inputStyle} font-semibold text-indigo-600 dark:text-indigo-400`}
+                >
+                  <option value="Online">Online Tournament</option>
+                  <option value="Offline">Offline / LAN Event</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="theme-text block text-xs font-bold uppercase mb-1">Venue Details</label>
+                <input 
+                  type="text" 
+                  name="venueDetails" 
+                  value={formData.venueDetails} 
+                  onChange={handleInputChange} 
+                  className={inputStyle} 
+                  placeholder={formData.venueType === 'Online' ? 'e.g. Discord / Room Code' : 'e.g. LXG Arena'} 
+                />
+              </div>
+
+              <div>
+                <label className="theme-text block text-xs font-bold uppercase mb-1">City / Region</label>
+                <input 
+                  type="text" 
+                  name="city" 
+                  value={formData.city} 
+                  onChange={handleInputChange} 
+                  className={inputStyle} 
+                  placeholder="e.g. Mumbai" 
+                />
+              </div>
             </div>
           </div>
         </div>
 
+        {/* Section 3: Registration & Slots */}
         <div>
-          <h2 className="text-base font-bold theme-text border-b pb-2 mb-4" style={{ borderColor: 'var(--border-color)' }}>3. Registration & Slots</h2>
+          <h2 className="theme-text theme-border text-base font-bold border-b pb-2 mb-4">
+            3. Registration & Slots
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-bold theme-subtext uppercase mb-1">Registration Fee (₹) *</label>
+              <label className="theme-text block text-xs font-bold uppercase mb-1">Registration Fee (₹) *</label>
               <input 
                 type="number" 
                 min="0" 
@@ -382,27 +482,28 @@ export function CreateTournamentPage() {
                 value={formData.registrationFee} 
                 onChange={handleInputChange} 
                 placeholder="0"
-                className={`theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none ${errors.registrationFee ? 'border-rose-500' : ''}`} 
+                className={`${inputStyle} ${errors.registrationFee ? 'border-rose-500' : ''}`} 
               />
               {errors.registrationFee && <p className="text-xs text-rose-500 mt-1">{errors.registrationFee}</p>}
             </div>
             <div>
-              <label className="block text-xs font-bold theme-subtext uppercase mb-1">Max Participants / Slots *</label>
-              <input type="number" min="2" name="maxTeams" value={formData.maxTeams} onChange={handleInputChange} className={`theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none ${errors.maxTeams ? 'border-rose-500' : ''}`} />
+              <label className="theme-text block text-xs font-bold uppercase mb-1">Max Slots *</label>
+              <input type="number" min="2" name="maxTeams" value={formData.maxTeams} onChange={handleInputChange} className={`${inputStyle} ${errors.maxTeams ? 'border-rose-500' : ''}`} />
               {errors.maxTeams && <p className="text-xs text-rose-500 mt-1">{errors.maxTeams}</p>}
             </div>
             <div>
-              <label className="block text-xs font-bold theme-subtext uppercase mb-1">Team Size (Players) *</label>
-              <input type="number" min="1" name="teamSize" value={formData.teamSize} onChange={handleInputChange} className={`theme-input w-full px-3 py-2 text-sm border rounded-lg outline-none ${errors.teamSize ? 'border-rose-500' : ''}`} />
+              <label className="theme-text block text-xs font-bold uppercase mb-1">Team Size (Players) *</label>
+              <input type="number" min="1" name="teamSize" value={formData.teamSize} onChange={handleInputChange} className={`${inputStyle} ${errors.teamSize ? 'border-rose-500' : ''}`} />
               {errors.teamSize && <p className="text-xs text-rose-500 mt-1">{errors.teamSize}</p>}
             </div>
           </div>
         </div>
 
+        {/* Section 4: Prize Pool Distribution */}
         <div>
-          <div className="flex justify-between items-center border-b pb-2 mb-4" style={{ borderColor: 'var(--border-color)' }}>
-            <h2 className="text-base font-bold theme-text">4. Prize Pool Distribution</h2>
-            <span className="text-xs font-bold text-indigo-500 bg-indigo-500/10 px-2.5 py-1 rounded-full">
+          <div className="flex justify-between items-center theme-border border-b pb-2 mb-4">
+            <h2 className="theme-text text-base font-bold">4. Prize Pool Distribution</h2>
+            <span className="text-xs font-bold text-indigo-600 dark:text-indigo-300 theme-icon-box border px-3 py-1 rounded-full">
               Total Prize Pool: ₹{calculateTotalPrize().toLocaleString('en-IN')}
             </span>
           </div>
@@ -412,7 +513,7 @@ export function CreateTournamentPage() {
           <div className="space-y-3">
             {formData.prizes.map((p, idx) => (
               <div key={idx} className="flex items-center gap-3">
-                <div className="w-32 px-3 py-2 text-sm border rounded-lg bg-gray-50 dark:bg-gray-800 font-semibold theme-text">
+                <div className="theme-icon-box theme-border theme-text w-32 px-3.5 py-2 text-sm border font-semibold rounded-lg">
                   Rank {p.position}
                 </div>
                 <input 
@@ -420,13 +521,13 @@ export function CreateTournamentPage() {
                   min="0"
                   value={p.amount} 
                   onChange={(e) => updatePrize(idx, 'amount', e.target.value)} 
-                  className="theme-input flex-1 px-3 py-2 text-sm border rounded-lg outline-none" 
+                  className={inputStyle} 
                   placeholder="Prize Amount (₹)"
                 />
                 <button 
                   type="button" 
                   onClick={() => removePrize(idx)} 
-                  className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg cursor-pointer"
+                  className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg cursor-pointer transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -435,24 +536,25 @@ export function CreateTournamentPage() {
             <button 
               type="button" 
               onClick={addPrize} 
-              className="flex items-center gap-1.5 text-xs font-semibold text-indigo-500 bg-indigo-500/10 px-3 py-2 rounded-lg cursor-pointer hover:bg-indigo-500/20"
+              className="theme-icon-box theme-border text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 border flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer transition-colors"
             >
               <Plus className="w-4 h-4" /> Add Prize Tier
             </button>
           </div>
         </div>
 
+        {/* Section 5: Rules & Guidelines */}
         <div>
-          <h2 className="text-base font-bold theme-text border-b pb-2 mb-4" style={{ borderColor: 'var(--border-color)' }}>
+          <h2 className="theme-text theme-border text-base font-bold border-b pb-2 mb-4">
             5. Rules & Guidelines
           </h2>
 
-          <div className="mb-4 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/40 rounded-xl p-4">
+          <div className="theme-icon-box theme-border border rounded-xl p-4 mb-4">
             <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase mb-2">
               <Lock className="w-3.5 h-3.5" />
               Mandatory Rules for {formData.venueType} Mode
             </div>
-            <ul className="list-disc list-inside space-y-1.5 text-xs text-indigo-900 dark:text-indigo-200">
+            <ul className="list-disc list-inside space-y-1.5 text-xs theme-subtext">
               {MANDATORY_RULES[formData.venueType]?.map((mRule, idx) => (
                 <li key={idx} className="font-medium">{mRule}</li>
               ))}
@@ -460,20 +562,20 @@ export function CreateTournamentPage() {
           </div>
 
           <div className="space-y-3">
-            <label className="block text-xs font-bold theme-subtext uppercase">Additional Rules</label>
+            <label className="theme-text block text-xs font-bold uppercase">Additional Rules</label>
             {formData.customRules.map((rule, idx) => (
               <div key={idx} className="flex items-center gap-3">
                 <input 
                   type="text" 
                   value={rule} 
                   onChange={(e) => updateCustomRule(idx, e.target.value)} 
-                  className="theme-input flex-1 px-3 py-2 text-sm border rounded-lg outline-none" 
+                  className={inputStyle} 
                   placeholder="Additional rule clause detail..."
                 />
                 <button 
                   type="button" 
                   onClick={() => removeCustomRule(idx)} 
-                  className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg cursor-pointer"
+                  className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg cursor-pointer transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -482,26 +584,26 @@ export function CreateTournamentPage() {
             <button 
               type="button" 
               onClick={addCustomRule} 
-              className="flex items-center gap-1.5 text-xs font-semibold text-indigo-500 bg-indigo-500/10 px-3 py-2 rounded-lg cursor-pointer hover:bg-indigo-500/20"
+              className="theme-icon-box theme-border text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 border flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer transition-colors"
             >
               <Plus className="w-4 h-4" /> Add Rule Clause
             </button>
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-6 border-t" style={{ borderColor: 'var(--border-color)' }}>
+        {/* Action Buttons */}
+        <div className="theme-border flex items-center justify-end gap-3 pt-6 border-t">
           <button 
             type="button" 
             onClick={() => handleSubmit('draft')} 
-            className="theme-hover theme-text px-4 py-2 text-xs font-bold rounded-lg border cursor-pointer"
-            style={{ borderColor: 'var(--border-color)' }}
+            className="theme-card theme-border theme-text theme-hover px-4 py-2 text-xs font-bold rounded-lg border cursor-pointer transition-all shadow-sm"
           >
             Save Draft
           </button>
           <button 
             type="button" 
             onClick={() => handleSubmit('published')} 
-            className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg cursor-pointer"
+            className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg cursor-pointer transition-all shadow-sm"
           >
             Publish Tournament
           </button>

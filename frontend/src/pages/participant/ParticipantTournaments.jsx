@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { participantService } from "../../services/participantService";
+import { RegisterModal } from "../../components/tournaments/RegisterModal";
 
 export const ParticipantTournaments = () => {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Controls the Register Form Modal
   const [selectedTournament, setSelectedTournament] = useState(null);
-  const [registering, setRegistering] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchTournaments();
@@ -49,13 +52,25 @@ export const ParticipantTournaments = () => {
       const local1 = readArray("nexus_tournaments");
       const local2 = readArray("my_tournaments");
       const localRegs = readArray("participant_registrations");
+      const myRegs = readArray("my_registrations");
+
+      // Combine registration records
+      const allRegisteredIds = [
+        ...localRegs,
+        ...myRegs.map((r) => r.tournamentId || r.id || r._id)
+      ].map(String);
 
       // 3. Deduplicate and normalize objects safely
       const combinedMap = new Map();
       [...list, ...local1, ...local2].forEach((item) => {
-        const key = item._id || item.id || item.title || item.name;
+        const key = String(item._id || item.id || item.title || item.name);
         if (key) {
-          const isReg = localRegs.includes(key) || item.isRegistered || item.status === "registered" || false;
+          const isReg =
+            allRegisteredIds.includes(key) ||
+            item.isRegistered ||
+            item.status === "registered" ||
+            false;
+
           combinedMap.set(key, {
             ...item,
             _id: key,
@@ -81,34 +96,9 @@ export const ParticipantTournaments = () => {
     }
   };
 
-  const handleRegister = async (tournamentId) => {
-    try {
-      setRegistering(true);
-
-      // Try API Endpoint
-      try {
-        if (participantService && typeof participantService.registerTournament === "function") {
-          await participantService.registerTournament(tournamentId);
-        }
-      } catch (apiErr) {
-        console.warn("Backend registration endpoint skipped, preserving registration locally:", apiErr);
-      }
-
-      // Local Storage Registration Sync
-      const localRegs = JSON.parse(localStorage.getItem("participant_registrations") || "[]");
-      if (!localRegs.includes(tournamentId)) {
-        localRegs.push(tournamentId);
-        localStorage.setItem("participant_registrations", JSON.stringify(localRegs));
-      }
-
-      toast.success("Successfully registered for the tournament!");
-      setSelectedTournament(null);
-      fetchTournaments();
-    } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to register for tournament");
-    } finally {
-      setRegistering(false);
-    }
+  const handleOpenRegisterModal = (tournament) => {
+    setSelectedTournament(tournament);
+    setIsModalOpen(true);
   };
 
   const filteredTournaments = tournaments.filter((item) => {
@@ -120,7 +110,8 @@ export const ParticipantTournaments = () => {
 
     if (filter === "registered") return item.isRegistered;
     if (filter === "live") return item.status?.toLowerCase() === "live";
-    if (filter === "upcoming") return item.status?.toLowerCase() === "upcoming" || item.status?.toLowerCase() === "published";
+    if (filter === "upcoming")
+      return item.status?.toLowerCase() === "upcoming" || item.status?.toLowerCase() === "published";
 
     return true;
   });
@@ -157,7 +148,7 @@ export const ParticipantTournaments = () => {
           <button
             key={tab.id}
             onClick={() => setFilter(tab.id)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
               filter === tab.id
                 ? "bg-indigo-600 text-white shadow-sm"
                 : "theme-card border theme-border theme-subtext theme-hover"
@@ -243,8 +234,9 @@ export const ParticipantTournaments = () => {
                 </button>
               ) : (
                 <button
-                  onClick={() => setSelectedTournament(t)}
-                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition shadow-sm text-center"
+                  type="button"
+                  onClick={() => handleOpenRegisterModal(t)}
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition shadow-sm text-center cursor-pointer"
                 >
                   Register Now ➔
                 </button>
@@ -254,63 +246,21 @@ export const ParticipantTournaments = () => {
         </div>
       )}
 
+      {/* FORM REGISTRATION MODAL */}
       {selectedTournament && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="theme-card border theme-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex justify-between items-center border-b theme-border pb-3">
-              <h3 className="text-sm font-bold theme-text">Confirm Tournament Slot</h3>
-              <button
-                onClick={() => setSelectedTournament(null)}
-                className="theme-subtext text-xs hover:theme-text"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <p className="theme-text">
-                You are about to register for <strong className="text-indigo-500">{selectedTournament.title}</strong>.
-              </p>
-
-              <div className="theme-icon-box border theme-border p-3 rounded-xl space-y-1.5">
-                <div className="flex justify-between">
-                  <span className="theme-subtext">Game:</span>
-                  <span className="font-bold theme-text">{selectedTournament.game}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="theme-subtext">Entry Fee:</span>
-                  <span className="font-bold text-emerald-500">
-                    {selectedTournament.entryFee ? `₹${selectedTournament.entryFee}` : "Free"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="theme-subtext">Date:</span>
-                  <span className="font-bold theme-text">
-                    {selectedTournament.startDate
-                      ? new Date(selectedTournament.startDate).toLocaleDateString("en-IN")
-                      : "TBA"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-3 border-t theme-border">
-              <button
-                onClick={() => setSelectedTournament(null)}
-                className="px-4 py-2 theme-border border rounded-xl theme-subtext text-xs theme-hover"
-              >
-                Cancel
-              </button>
-              <button
-                disabled={registering}
-                onClick={() => handleRegister(selectedTournament._id || selectedTournament.id)}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition"
-              >
-                {registering ? "Confirming..." : "Confirm Registration"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <RegisterModal
+          tournament={selectedTournament}
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedTournament(null);
+          }}
+          onSuccess={() => {
+            setIsModalOpen(false);
+            setSelectedTournament(null);
+            fetchTournaments();
+          }}
+        />
       )}
     </div>
   );
