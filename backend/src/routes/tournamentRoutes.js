@@ -5,12 +5,18 @@ import { isTournamentOwner } from '../middleware/tournament.js';
 
 const router = express.Router();
 
-router.route("/").post(isAuthenticatedUser, authorizeRoles("organizer"), createTournament).get(getAllTournaments);
+router.route("/")
+    .post(isAuthenticatedUser, authorizeRoles("organizer"), createTournament)
+    .get(getAllTournaments);
 
-router.route("/me").get(isAuthenticatedUser,authorizeRoles("organizer"),getMyTournaments);
+router.route("/me")
+    .get(isAuthenticatedUser, authorizeRoles("organizer"), getMyTournaments);
 
 
-router.route("/:id").get(getTournament).put(isAuthenticatedUser, authorizeRoles("organizer"),isTournamentOwner, updateTournament).delete(isAuthenticatedUser, authorizeRoles("organizer"),isTournamentOwner, deleteTournament);
+router.route("/:id")
+    .get(getTournament)
+    .put(isAuthenticatedUser, authorizeRoles("organizer"), isTournamentOwner, updateTournament)
+    .delete(isAuthenticatedUser, authorizeRoles("organizer"), isTournamentOwner, deleteTournament);
 
 
 

@@ -1,6 +1,7 @@
 import dotevn from 'dotenv';
 import app from "./app.js";
 import { connectDatabase } from './config/database.js';
+import { startTournamentScheduler } from "./utils/tournamentScheduler.js";
 
 dotevn.config();
 
@@ -27,6 +28,8 @@ async function startServer() {
                 process.exit(1);
             });
         });
+
+        startTournamentScheduler();
 
 
         const server = app.listen(PORT, () => {

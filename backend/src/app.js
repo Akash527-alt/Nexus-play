@@ -8,7 +8,7 @@ import organizerRoutes from './routes/organizerRoutes.js'
 import cors from 'cors'
 import registrationRoutes from "./routes/registrationRoutes.js";
 
-app.use("/api/v1", registrationRoutes);
+
 
 const app = express();
 
@@ -32,6 +32,7 @@ app.set('query parser', 'extended');
 app.use("/api/v1/tournaments",tournamentRoutes);
 app.use("/api/v1/auth",authRoutes);
 app.use("/api/v1/organizer", organizerRoutes);
+app.use("/api/v1", registrationRoutes);
 
 
 

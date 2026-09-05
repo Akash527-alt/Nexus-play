@@ -32,20 +32,32 @@ const tournamentSchema = new mongoose.Schema(
             trim: true,
         },
 
+        tournamentMode: {
+            type: String,
+            required: [true, "Tournament mode is required"],
+            trim: true,
+        },
+
         venue: {
             type: String,
             required: [true, "Tournament venue is required"],
             trim: true,
         },
 
+        cityRegion: {
+            type: String,
+            required: [true, "City or region is required"],
+            trim: true,
+        },
+
         startDate: {
             type: Date,
-            required: [true, "Start Date is required"],
+            required: [true, "Start date is required"],
         },
 
         endDate: {
             type: Date,
-            required: [true, "End Date is required"],
+            required: [true, "End date is required"],
         },
 
         registrationDeadline: {
@@ -106,7 +118,13 @@ const tournamentSchema = new mongoose.Schema(
 
         status: {
             type: String,
-            enum: ["draft", "published", "ongoing", "completed", "cancelled"],
+            enum: [
+                "draft",
+                "published",
+                "ongoing",
+                "completed",
+                "cancelled",
+            ],
             default: "draft",
         },
     },

@@ -1,6 +1,6 @@
 import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
 import Registration from "../models/Registration.js";
-import Tournament from "../models/Tournament.js";
+import Tournament from "../models/tournament.js";
 import ErrorHandler from "../utils/ErrorHandler.js";
 
 

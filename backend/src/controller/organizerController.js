@@ -1,6 +1,7 @@
 import Organizer from "../models/organizer.js";
 import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
 import ErrorHandler from "../utils/ErrorHandler.js";
+import Tournament from "../models/tournament.js";
 
 export const createOrganizerProfile = catchAsyncErrors(
     async (req, res, next) => {
@@ -83,6 +84,119 @@ export const createOrganizerProfile = catchAsyncErrors(
             success: true,
             message: "Organizer profile created successfully",
             organizer,
+        });
+    }
+);
+
+// Get organizer dashboard data
+// GET /api/v1/tournaments/dashboard
+export const getOrganizerDashboard = catchAsyncErrors(
+    async (req, res, next) => {
+        // Find organizer profile using logged-in user
+        const organizer = await Organizer.findOne({
+            userId: req.user._id,
+        });
+
+        if (!organizer) {
+            return next(
+                new ErrorHandler(
+                    "Organizer profile not found",
+                    404
+                )
+            );
+        }
+
+        const organizerId = organizer._id;
+
+        // Fetch dashboard statistics and recent tournaments
+        const [
+            totalTournaments,
+            draftTournaments,
+            publishedTournaments,
+            ongoingTournaments,
+            completedTournaments,
+            cancelledTournaments,
+            totalParticipants,
+            recentTournaments,
+        ] = await Promise.all([
+            // Total tournaments
+            Tournament.countDocuments({
+                organizer: organizerId,
+            }),
+
+            // Draft tournaments
+            Tournament.countDocuments({
+                organizer: organizerId,
+                status: "draft",
+            }),
+
+            // Published tournaments
+            Tournament.countDocuments({
+                organizer: organizerId,
+                status: "published",
+            }),
+
+            // Ongoing tournaments
+            Tournament.countDocuments({
+                organizer: organizerId,
+                status: "ongoing",
+            }),
+
+            // Completed tournaments
+            Tournament.countDocuments({
+                organizer: organizerId,
+                status: "completed",
+            }),
+
+            // Cancelled tournaments
+            Tournament.countDocuments({
+                organizer: organizerId,
+                status: "cancelled",
+            }),
+
+            // Total participants across all organizer tournaments
+            Tournament.aggregate([
+                {
+                    $match: {
+                        organizer: organizerId,
+                    },
+                },
+                {
+                    $group: {
+                        _id: null,
+                        total: {
+                            $sum: "$currentParticipants",
+                        },
+                    },
+                },
+            ]),
+
+            // Five most recently created tournaments
+            Tournament.find({
+                organizer: organizerId,
+            })
+                .sort({ createdAt: -1 })
+                .limit(5),
+        ]);
+
+        res.status(200).json({
+            success: true,
+
+            stats: {
+                totalTournaments,
+                draftTournaments,
+                publishedTournaments,
+                ongoingTournaments,
+                completedTournaments,
+                cancelledTournaments,
+
+                totalParticipants:
+                    totalParticipants.length > 0
+                        ? totalParticipants[0].total
+                        : 0,
+            },
+
+            recentTournaments,
         });
     }
 );
