@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Update base URL as per your API setup
-const API_URL = "http://localhost:5000/api/participant"; 
+const API_URL = "http://localhost:5000/api/v1"; 
 
 export const participantService = {
   getDashboardStats: async () => {

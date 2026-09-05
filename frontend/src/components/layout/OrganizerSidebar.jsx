@@ -11,9 +11,17 @@ import {
   LogOut,
   Gamepad2
 } from 'lucide-react';
+import { authService } from '../../services/authService.js';
+import { toast } from 'sonner';
 
 export function OrganizerSidebar() {
   const navigate = useNavigate();
+
+  function handleLogout(){
+    authService.logoutUser();
+    toast.success("logged out");
+    navigate("/login");
+  }
 
   const navItems = [
     { label: 'Dashboard', path: '/organizer/dashboard', icon: LayoutDashboard },
@@ -93,7 +101,7 @@ export function OrganizerSidebar() {
         })}
 
         <button 
-          onClick={() => alert('Logged out successfully')} 
+          onClick={handleLogout} 
           className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer mt-2"
         >
           <LogOut className="w-4 h-4" />

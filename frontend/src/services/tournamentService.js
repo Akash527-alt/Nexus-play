@@ -9,7 +9,7 @@ export const tournamentService = {
 
   // Organizer List
   getMy: async () => {
-    const res = await api.get('/organizer/tournaments');
+    const res = await api.get('/tournaments');
     return res.data;
   },
 
@@ -19,7 +19,7 @@ export const tournamentService = {
   },
 
   create: async (data) => {
-    const res = await api.post('/organizer/tournaments', data);
+    const res = await api.post('/tournaments', data);
     return res.data;
   }
 };

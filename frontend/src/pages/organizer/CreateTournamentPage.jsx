@@ -181,80 +181,102 @@ const validateForm = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (status = 'published') => {
-    if (!validateForm()) return;
+  const convertISTToUTC = (date, time) => {
+  // The selected date and time are treated as India time.
+  // Example: 2026-09-05 + 10:00 AM → 2026-09-05T04:30:00.000Z
 
-    const currentMandatoryRules = MANDATORY_RULES[formData.venueType] || [];
-    const validCustomRules = formData.customRules.filter(r => r.trim());
-    const combinedRulesList = [...currentMandatoryRules, ...validCustomRules];
+  const [hours, minutes] = time.split(":").map(Number);
 
-    const uniqueId = `t_${Date.now()}`;
+  const istDate = new Date(
+    `${date}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00+05:30`
+  );
 
-    const payload = {
-      id: uniqueId,
-      _id: uniqueId,
-      title: formData.name,
-      name: formData.name,
-      game: formData.game,
-      tournamentType: Number(formData.teamSize) > 1 ? 'team' : 'solo',
-      description: formData.description,
-      rules: combinedRulesList.join('\n'),
-      venue: `${formData.venueType}: ${formData.venueDetails} (${formData.city})`,
-      startDate: formData.startDate,
-      startTime: formData.startTime,
-      endDate: formData.endDate,
-      endTime: formData.endTime,
-      registrationDeadline: formData.registrationDeadline,
-      registrationDeadlineTime: formData.registrationDeadlineTime,
-      entryFee: formData.registrationFee === '' ? 0 : Number(formData.registrationFee),
-      prizePool: calculateTotalPrize(),
-      totalPrizePool: calculateTotalPrize(),
-      prizes: formData.prizes.map(p => ({
-        position: Number(p.position),
-        amount: Number(p.amount)
-      })),
-      maxParticipants: Number(formData.maxTeams),
-      maxSlots: Number(formData.maxTeams),
-      filledSlots: 0,
-      teamSize: Number(formData.teamSize),
-      status: status,
-      createdAt: new Date().toISOString()
-    };
+  return istDate.toISOString();
+};
 
-    try {
-      if (addTournament) {
-        addTournament(payload);
-      }
+  const handleSubmit = async (status = "published") => {
+  // Draft functionality is intentionally disabled for now.
+  if (status === "draft") return;
 
-      const readExisting = (key) => {
-        try {
-          return JSON.parse(localStorage.getItem(key) || '[]');
-        } catch (e) {
-          return [];
-        }
-      };
+  if (!validateForm()) return;
 
-      const existing1 = readExisting('nexus_tournaments');
-      const existing2 = readExisting('my_tournaments');
-      
-      const filtered1 = existing1.filter(item => (item._id || item.id) !== uniqueId);
-      const filtered2 = existing2.filter(item => (item._id || item.id) !== uniqueId);
+  const currentMandatoryRules = MANDATORY_RULES[formData.venueType] || [];
+  const validCustomRules = formData.customRules.filter((rule) => rule.trim());
 
-      localStorage.setItem('nexus_tournaments', JSON.stringify([payload, ...filtered1]));
-      localStorage.setItem('my_tournaments', JSON.stringify([payload, ...filtered2]));
+  const combinedRulesList = [
+    ...currentMandatoryRules,
+    ...validCustomRules,
+  ];
 
-      if (tournamentService && typeof tournamentService.create === 'function') {
-        await tournamentService.create(payload);
-      }
+  const payload = {
+    title: formData.name.trim(),
 
-      toast.success(`Tournament ${status === 'draft' ? 'saved as draft' : 'published'} successfully!`);
-      navigate('/organizer/dashboard');
-    } catch (err) {
-      console.warn('Backend write failed, tournament saved to local store:', err);
-      toast.success('Tournament saved locally!');
-      navigate('/organizer/dashboard');
-    }
+    game: formData.game.trim(),
+
+    tournamentType:
+      Number(formData.teamSize) > 1 ? "team" : "solo",
+
+    description: formData.description.trim(),
+
+    rules: combinedRulesList.join("\n"),
+
+    tournamentMode: formData.venueType,
+
+    venue: `${formData.venueDetails.trim()} (${formData.city.trim()})`,
+
+    cityRegion: formData.city.trim(),
+
+    // Convert selected India date/time into UTC ISO dates.
+    startDate: convertISTToUTC(
+      formData.startDate,
+      formData.startTime
+    ),
+
+    endDate: convertISTToUTC(
+      formData.endDate,
+      formData.endTime
+    ),
+
+    registrationDeadline: convertISTToUTC(
+      formData.registrationDeadline,
+      formData.registrationDeadlineTime
+    ),
+
+    entryFee:
+      formData.registrationFee === ""
+        ? 0
+        : Number(formData.registrationFee),
+
+    prizePool: calculateTotalPrize(),
+
+    prizes: formData.prizes.map((prize) => ({
+      position: Number(prize.position),
+      amount: Number(prize.amount),
+    })),
+
+    maxParticipants: Number(formData.maxTeams),
+
+    teamSize: Number(formData.teamSize),
+
+    // Only Publish is connected right now.
+    status: "published",
   };
+
+  try {
+    await tournamentService.create(payload);
+
+    toast.success("Tournament published successfully!");
+
+    navigate("/organizer/dashboard");
+  } catch (err) {
+    console.error("Tournament creation failed:", err);
+
+    toast.error(
+      err.response?.data?.message ||
+      "Failed to publish tournament. Please try again."
+    );
+  }
+};
 
   // Uses custom CSS classes directly mapped to index.css
   const inputStyle = "theme-input w-full px-3.5 py-2 text-sm rounded-lg border outline-none focus:ring-2 focus:ring-indigo-600 transition-all";

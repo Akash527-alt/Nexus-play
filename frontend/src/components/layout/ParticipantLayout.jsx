@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useTheme } from "../../context/ThemeContext";
+import { authService } from "../../services/authService.js";
 
 export const ParticipantLayout = ({ children }) => {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
 
   // Initial state set to false so sidebar opens closed by default
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -33,6 +35,13 @@ export const ParticipantLayout = ({ children }) => {
         return "Player Arena Dashboard";
     }
   };
+
+  function handleLogout(){
+    authService.logoutUser();
+    toast.success("Logged out successfully");
+    navigate("/login");
+
+  }
 
   return (
     <div className="min-h-screen theme-bg theme-text flex flex-col md:flex-row font-sans">
@@ -112,7 +121,7 @@ export const ParticipantLayout = ({ children }) => {
               </div>
             </div>
             <button
-              onClick={() => toast.success("Logged out successfully")}
+              onClick={handleLogout}
               className="theme-subtext hover:text-red-500 text-xs transition cursor-pointer"
             >
               ➔
