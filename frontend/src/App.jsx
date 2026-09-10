@@ -6,45 +6,38 @@ import {
   Navigate,
 } from "react-router-dom";
 import { Toaster } from "sonner";
-
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext";
 import { TournamentProvider } from "./context/TournamentContext";
-
-// Layouts
 import { OrganizerLayout } from "./components/layout/OrganizerLayout";
 import { ParticipantLayout } from "./components/layout/ParticipantLayout";
-
-// Auth Pages
+import { SponsorLayout } from "./components/layout/SponsorLayout";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { RegisterPage } from "./pages/auth/RegisterPage.jsx";
 import { OrganizerRegisterPage } from "./pages/auth/OrganizerRegisterPage";
 import { OrganizerProfilePage } from "./pages/auth/OrganizerProfilePage";
-
-// Organizer Pages
 import { DashboardPage } from "./pages/organizer/DashboardPage";
 import { TournamentsPage } from "./pages/organizer/TournamentsPage";
 import { CreateTournamentPage } from "./pages/organizer/CreateTournamentPage";
 import { TournamentDetailPage } from "./pages/organizer/TournamentDetailPage";
 import { ProfilePage } from "./pages/organizer/ProfilePage";
 import { SettingsPage } from "./pages/organizer/SettingsPage";
-
-// Participant / Student Pages
 import { ParticipantDashboard } from "./pages/participant/ParticipantDashboard";
 import { ParticipantTournaments } from "./pages/participant/ParticipantTournaments";
 import { ParticipantTournamentDetailPage } from "./pages/participant/ParticipantTournamentDetailPage";
 import { ParticipantHistory } from "./pages/participant/ParticipantHistory";
 import { ParticipantProfilePage } from "./pages/participant/ProfilePage";
 import { ParticipantSettingsPage } from "./pages/participant/SettingsPage";
-
+import { SponsorDashboardPage } from "./pages/sponsor/DashboardPage";
+import { SponsorTournamentsPage } from "./pages/sponsor/TournamentsPage";
+import { SponsorProfilePage } from "./pages/sponsor/ProfilePage";
+import { SponsorSettingsPage } from "./pages/sponsor/SettingsPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
-
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { UnauthorizedPage } from "./pages/UnauthorizedPage.jsx";
 import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage.jsx";
 import { ResetPasswordPage } from "./pages/auth/ResetPasswordPage";
 
-// Fallback components
 const HistoryPage = () => (
   <div className="p-6">
     <h1 className="text-2xl font-bold">Tournament History</h1>
@@ -68,7 +61,6 @@ function App() {
             <Toaster position="top-right" richColors closeButton />
 
             <Routes>
-              {/* PUBLIC ROUTES */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -86,7 +78,6 @@ function App() {
                 element={<OrganizerProfilePage />}
               />
 
-              {/* PARTICIPANT ROUTES */}
               <Route
                 path="/participant/*"
                 element={
@@ -129,7 +120,6 @@ function App() {
                 }
               />
 
-              {/* ORGANIZER ROUTES */}
               <Route
                 path="/organizer/*"
                 element={
@@ -173,7 +163,44 @@ function App() {
                 }
               />
 
-              {/* ROOT & FALLBACK */}
+              <Route
+                path="/sponsor/*"
+                element={
+                  <ProtectedRoute roles={["sponsor"]}>
+                    <SponsorLayout>
+                      <Routes>
+                        <Route
+                          path="dashboard"
+                          element={<SponsorDashboardPage />}
+                        />
+
+                        <Route
+                          path="tournaments"
+                          element={<SponsorTournamentsPage />}
+                        />
+
+                        <Route
+                          path="profile"
+                          element={<SponsorProfilePage />}
+                        />
+
+                        <Route
+                          path="settings"
+                          element={<SponsorSettingsPage />}
+                        />
+
+                        <Route
+                          path="*"
+                          element={
+                            <Navigate to="/sponsor/dashboard" replace />
+                          }
+                        />
+                      </Routes>
+                    </SponsorLayout>
+                  </ProtectedRoute>
+                }
+              />
+
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/unauthorized" element={<UnauthorizedPage />} />
               <Route path="*" element={<NotFoundPage />} />
