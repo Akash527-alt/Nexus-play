@@ -2,60 +2,145 @@ import mongoose from "mongoose";
 
 const registrationSchema = new mongoose.Schema(
     {
+        // User who submits the registration
         user: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: [true, "User is required"],
         },
 
+        // Tournament for which the registration is made
         tournament: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Tournament",
             required: [true, "Tournament is required"],
         },
 
+        // Solo or team registration
         registrationType: {
             type: String,
             enum: ["solo", "team"],
             required: [true, "Registration type is required"],
         },
 
+        // Required only for team registration
         teamName: {
             type: String,
             trim: true,
-            required: [
-                function () {
-                    return this.registrationType === "team";
-                },
-                "Team name is required for team registration",
-            ],
+            default: null,
         },
 
-        teamMembers: {
+        // Player information
+        players: {
             type: [
                 {
-                    type: mongoose.Schema.Types.ObjectId,
-                    ref: "User",
+                    user: {
+                        type: mongoose.Schema.Types.ObjectId,
+                        ref: "User",
+                        default: null,
+                    },
+
+                    fullName: {
+                        type: String,
+                        required: [true, "Player full name is required"],
+                        trim: true,
+                    },
+
+                    gameUid: {
+                        type: String,
+                        required: [true, "Game UID / IGN is required"],
+                        trim: true,
+                    },
+
+                    email: {
+                        type: String,
+                        required: [true, "Player email is required"],
+                        trim: true,
+                        lowercase: true,
+                    },
+
+                    phone: {
+                        type: String,
+                        required: [true, "Player phone number is required"],
+                        trim: true,
+                    },
                 },
             ],
-            required: [
-                function () {
-                    return this.registrationType === "team";
-                },
-                "Team members are required for team registration",
-            ],
+            required: [true, "Players are required"],
             validate: {
-                // Rejects the array if any user ID appears more than once
-                validator: function (members) {
-                    if (!members || members.length === 0) return true;
-
-                    const uniqueMembers = new Set(
-                        members.map((memberId) => memberId.toString())
+                validator: function (players) {
+                    return (
+                        Array.isArray(players) &&
+                        players.length > 0
                     );
-
-                    return uniqueMembers.size === members.length;
                 },
-                message: "teamMembers cannot contain duplicate users",
+                message: "At least one player is required",
+            },
+        },
+
+        // Captain's contact details
+        captainContact: {
+            whatsapp: {
+                type: String,
+                required: [true, "WhatsApp contact is required"],
+                trim: true,
+            },
+
+            alternatePhone: {
+                type: String,
+                trim: true,
+                default: "",
+            },
+
+            discordId: {
+                type: String,
+                trim: true,
+                default: "",
+            },
+        },
+
+        // Mandatory registration agreements
+        agreements: {
+            antiCheat: {
+                type: Boolean,
+                required: true,
+                default: false,
+            },
+
+            rulebook: {
+                type: Boolean,
+                required: true,
+                default: false,
+            },
+
+            identityVerification: {
+                type: Boolean,
+                required: true,
+                default: false,
+            },
+
+            mediaConsent: {
+                type: Boolean,
+                required: true,
+                default: false,
+            },
+
+            professionalConduct: {
+                type: Boolean,
+                required: true,
+                default: false,
+            },
+
+            guardianConsent: {
+                type: Boolean,
+                required: true,
+                default: false,
+            },
+
+            captainResponsibility: {
+                type: Boolean,
+                required: true,
+                default: false,
             },
         },
 
@@ -69,9 +154,23 @@ const registrationSchema = new mongoose.Schema(
         timestamps: true,
     }
 );
-// registerParticipant/getMyRegistration/cancelRegistration.
-registrationSchema.index({ user: 1, tournament: 1 });
 
-const Registration = mongoose.model("Registration", registrationSchema);
+registrationSchema.index(
+    {
+        user: 1,
+        tournament: 1,
+    },
+    {
+        unique: true,
+        partialFilterExpression: {
+            status: "registered",
+        },
+    }
+);
+
+const Registration = mongoose.model(
+    "Registration",
+    registrationSchema
+);
 
 export default Registration;
