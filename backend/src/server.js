@@ -14,11 +14,32 @@ process.on("uncaughtException", (err) => {
     process.exit(1);
 });
 
-// console.log(undefinedVariable);
+import User from "./models/user.js";
 
 async function startServer() {
     try {
         await connectDatabase();
+
+        // Seed root Super Admin if not present
+        try {
+            const adminEmail = "admin@nexusplay.gg";
+            const adminUser = await User.findOne({ email: adminEmail.toLowerCase() });
+            if (!adminUser) {
+                await User.create({
+                    name: "Super Admin Root",
+                    email: adminEmail.toLowerCase(),
+                    password: "admin123",
+                    role: "superadmin",
+                });
+                console.log("Root Super Admin account initialized: admin@nexusplay.gg / admin123");
+            } else if (adminUser.role !== "superadmin") {
+                adminUser.role = "superadmin";
+                await adminUser.save({ validateBeforeSave: false });
+                console.log("User admin@nexusplay.gg upgraded to superadmin");
+            }
+        } catch (seedErr) {
+            console.warn("Super admin seed check:", seedErr.message);
+        }
 
         process.on("unhandledRejection", (err) => {
             console.error("UNHANDLED REJECTION! Shutting down...");

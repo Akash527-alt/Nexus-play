@@ -10,13 +10,14 @@ import registrationRoutes from "./routes/registrationRoutes.js";
 
 
 
+import sponsorRoutes from './routes/sponsorRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+
 const app = express();
 
-
-// 
 app.use(
     cors({
-        origin: "http://localhost:5173",
+        origin: ["http://localhost:5173", "http://localhost:5174"],
         credentials: true,
     })
 );
@@ -27,11 +28,11 @@ app.use(express.json());
 app.use(cookieParser());
 app.set('query parser', 'extended');
 
-
-
-app.use("/api/v1/tournaments",tournamentRoutes);
-app.use("/api/v1/auth",authRoutes);
+app.use("/api/v1/tournaments", tournamentRoutes);
+app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/organizer", organizerRoutes);
+app.use("/api/v1/sponsors", sponsorRoutes);
+app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1", registrationRoutes);
 
 
