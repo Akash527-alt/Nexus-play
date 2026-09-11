@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "seeder": "node src/seeder/seeder.js"
+    "seed:superadmin": "node src/seeder/seeder.js"
   },
   "keywords": [],
   "author": "",

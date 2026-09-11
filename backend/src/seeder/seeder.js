@@ -1,33 +1,43 @@
 import mongoose from "mongoose";
-import dotenv from 'dotenv';
-import Tournament from "../models/tournament.js";
-import tournaments from "./data.js";
+import dotenv from "dotenv";
 
+import User from "../models/user.js";
 
 dotenv.config();
 
-const seedTournaments = async(req,res) =>{
-
-    try{
+const createSuperAdmin = async () => {
+    try {
+        // Connect to database
         await mongoose.connect(process.env.MONGODB_URI);
-        console.log("Connect to database");
 
-        await Tournament.deleteMany();
-        console.log("Existing tournament removed");
+        console.log("MongoDB connected");
 
-        await Tournament.insertMany(tournaments);
-        console.log(`${tournaments.length} records inserted successfully `);    
+        // Check if superadmin already exists
+        const existingSuperAdmin = await User.findOne({
+            role: "superadmin",
+        });
 
-        await mongoose.connection.close();
-        console.log("Database connection closed");
+        if (existingSuperAdmin) {
+            console.log("Superadmin already exists");
+            process.exit(0);
+        }
+
+        // Create superadmin
+        const superAdmin = await User.create({
+            name: "NexusPlay Superadmin",
+            email: process.env.SUPERADMIN_EMAIL,
+            password: process.env.SUPERADMIN_PASSWORD,
+            role: "superadmin",
+        });
+
+        console.log("Superadmin created successfully");
+        console.log(`Email: ${superAdmin.email}`);
+
         process.exit(0);
-    }catch(err){
-
-    }console.error("Tournament seeding failed:", error.message);
-
-        await mongoose.connection.close();
-
+    } catch (error) {
+        console.error("Error creating superadmin:", error);
         process.exit(1);
-}
+    }
+};
 
-seedTournaments();
+createSuperAdmin();
