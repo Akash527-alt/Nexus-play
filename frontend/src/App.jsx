@@ -11,7 +11,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { TournamentProvider } from "./context/TournamentContext";
 import { OrganizerLayout } from "./components/layout/OrganizerLayout";
 import { ParticipantLayout } from "./components/layout/ParticipantLayout";
-import { SponsorLayout } from "./components/layout/SponsorLayout";
+// import { SponsorLayout } from "./components/layout/SponsorLayout";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { RegisterPage } from "./pages/auth/RegisterPage.jsx";
 import { OrganizerRegisterPage } from "./pages/auth/OrganizerRegisterPage";
@@ -28,10 +28,10 @@ import { ParticipantTournamentDetailPage } from "./pages/participant/Participant
 import { ParticipantHistory } from "./pages/participant/ParticipantHistory";
 import { ParticipantProfilePage } from "./pages/participant/ProfilePage";
 import { ParticipantSettingsPage } from "./pages/participant/SettingsPage";
-import { SponsorDashboardPage } from "./pages/sponsor/DashboardPage";
-import { SponsorTournamentsPage } from "./pages/sponsor/TournamentsPage";
-import { SponsorProfilePage } from "./pages/sponsor/ProfilePage";
-import { SponsorSettingsPage } from "./pages/sponsor/SettingsPage";
+// import { SponsorDashboardPage } from "./pages/sponsor/DashboardPage";
+// import { SponsorTournamentsPage } from "./pages/sponsor/TournamentsPage";
+// import { SponsorProfilePage } from "./pages/sponsor/ProfilePage";
+// import { SponsorSettingsPage } from "./pages/sponsor/SettingsPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { UnauthorizedPage } from "./pages/UnauthorizedPage.jsx";
@@ -163,7 +163,7 @@ function App() {
                 }
               />
 
-              <Route
+              {/* <Route
                 path="/sponsor/*"
                 element={
                   <ProtectedRoute roles={["sponsor"]}>
@@ -199,7 +199,7 @@ function App() {
                     </SponsorLayout>
                   </ProtectedRoute>
                 }
-              />
+              /> */}
 
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/unauthorized" element={<UnauthorizedPage />} />

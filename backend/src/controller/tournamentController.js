@@ -1,5 +1,5 @@
 import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
-import Tournament from "../models/Tournament.js";
+import Tournament from "../models/tournament.js"
 import ErrorHandler from "../utils/ErrorHandler.js";
 import APIFeatures from "../utils/apiFeatures.js";
 import Organizer from "../models/organizer.js";
