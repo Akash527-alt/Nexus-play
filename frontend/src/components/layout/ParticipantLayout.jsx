@@ -36,13 +36,11 @@ export const ParticipantLayout = ({ children }) => {
     }
   };
 
-  const { logout } = useAuth();
-
-  const handleLogout = async () => {
-    await logout();
+  function handleLogout() {
+    authService.logoutUser();
     toast.success("Logged out successfully");
-    navigate("/login", { replace: true });
-  };
+    navigate("/login");
+  }
 
   return (
     <div className="min-h-screen theme-bg theme-text flex flex-col md:flex-row font-sans">
@@ -56,7 +54,9 @@ export const ParticipantLayout = ({ children }) => {
           >
             {isSidebarOpen ? "✕" : "☰"}
           </button>
-          <span className="font-extrabold text-indigo-500 text-sm tracking-wider">NEXUS</span>
+          <span className="font-extrabold text-indigo-500 text-sm tracking-wider">
+            NEXUS
+          </span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -80,7 +80,9 @@ export const ParticipantLayout = ({ children }) => {
                   N
                 </div>
                 <div>
-                  <h2 className="font-extrabold text-sm tracking-wider theme-text">NEXUS PLAY</h2>
+                  <h2 className="font-extrabold text-sm tracking-wider theme-text">
+                    NEXUS PLAY
+                  </h2>
                   <p className="text-[10px] theme-subtext font-semibold uppercase tracking-widest">
                     Student Arena
                   </p>
@@ -118,7 +120,9 @@ export const ParticipantLayout = ({ children }) => {
               </div>
               <div>
                 <p className="text-xs font-bold theme-text">Alex Student</p>
-                <p className="text-[10px] text-emerald-500 font-semibold">● Online</p>
+                <p className="text-[10px] text-emerald-500 font-semibold">
+                  ● Online
+                </p>
               </div>
             </div>
             <button
@@ -144,7 +148,9 @@ export const ParticipantLayout = ({ children }) => {
             >
               ☰
             </button>
-            <h2 className="text-sm font-bold theme-text tracking-wide">{getPageTitle()}</h2>
+            <h2 className="text-sm font-bold theme-text tracking-wide">
+              {getPageTitle()}
+            </h2>
           </div>
 
           <div className="flex items-center gap-3">
@@ -169,7 +175,9 @@ export const ParticipantLayout = ({ children }) => {
         </header>
 
         {/* Dynamic Page Box */}
-        <div className="p-4 md:p-8 flex-1 overflow-y-auto w-full">{children}</div>
+        <div className="p-4 md:p-8 flex-1 overflow-y-auto w-full">
+          {children}
+        </div>
 
         {/* Footer */}
         <footer className="px-8 py-4 theme-card border-t theme-border text-center md:flex md:justify-between text-[11px] theme-subtext">
