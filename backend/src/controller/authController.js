@@ -196,6 +196,7 @@ export const registerOrganizer = catchAsyncErrors(async (req, res, next) => {
         email,
         password,
         role: "organizer",
+        isProfileComplete: false,
     });
 
     sendToken(user, 201, res);

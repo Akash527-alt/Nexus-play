@@ -58,6 +58,11 @@ const organizerSchema = new mongoose.Schema(
             required: [true, "Please enter contact phone"],
             trim: true,
         },
+        verificationStatus: {
+            type: String,
+            enum: ["pending", "verified", "rejected", "suspended"],
+            default: "pending",
+        },
     },
     {
         timestamps: true,

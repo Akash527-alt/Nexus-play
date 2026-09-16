@@ -1,5 +1,5 @@
 import Organizer from "../models/organizer.js";
-import Tournament from "../models/Tournament.js";
+import Tournament from "../models/tournament.js";
 import ErrorHandler from "../utils/ErrorHandler.js";
 import catchAsyncErrors from "./catchAsyncErrors.js";
 

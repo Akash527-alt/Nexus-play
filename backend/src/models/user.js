@@ -38,8 +38,12 @@ const userSchema = new mongoose.Schema(
 
         role: {
             type: String,
-            enum: ["user", "organizer", "sponsor", "admin", "superadmin"],
+            enum: ["user", "organizer", "sponsor", "superadmin"],
             default: "user",
+        },
+        isProfileComplete: {
+            type: Boolean,
+            default: true,
         },
         resetPasswordToken: String,
         resetPasswordExpire: Date,
@@ -64,8 +68,8 @@ userSchema.methods.comparePassword = async function (enteredPassword) {
 };
 
 // Return JWT Token
-userSchema.methods.getJwtToken = function(){
-    return jwt.sign({id:this._id},process.env.JWT_SECRET,{expiresIn:process.env.JWT_EXPIRES_TIME})
+userSchema.methods.getJwtToken = function () {
+    return jwt.sign({ id: this._id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_TIME })
 }
 
 userSchema.methods.getResetPasswordToken = function () {

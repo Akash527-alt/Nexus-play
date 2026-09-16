@@ -76,13 +76,17 @@ export const createOrganizerProfile = catchAsyncErrors(
             address,
             contactEmail,
             contactPhone,
+            verificationStatus: "pending",
         });
+
+        req.user.isProfileComplete = true;
+        await req.user.save();
 
         console.log("9. Organizer created:", organizer._id);
 
         res.status(201).json({
             success: true,
-            message: "Organizer profile created successfully",
+            message: "Organizer profile submitted for verification",
             organizer,
         });
     }
