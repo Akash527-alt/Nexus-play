@@ -5,6 +5,7 @@ import {
   registerUser,
   logoutUser,
   registerOrganizer,
+  registerSponsor,
   createOrganizerProfile,
 } from "../services/authService";
 
@@ -21,6 +22,8 @@ export const AuthProvider = ({ children }) => {
 
       if (data.success) {
         setUser(data.user);
+      } else {
+        setUser(null);
       }
     } catch (error) {
       setUser(null);
@@ -38,27 +41,51 @@ export const AuthProvider = ({ children }) => {
     const data = await loginUser(credentials);
 
     if (data.success) {
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
       setUser(data.user);
     }
 
     return data;
   };
 
+  // Register participant
   const register = async (userData) => {
     const data = await registerUser(userData);
 
     if (data.success) {
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
       setUser(data.user);
     }
 
     return data;
   };
 
-  // Register roganizer
+  // Register organizer
   const registerOrganizerAccount = async (userData) => {
     const data = await registerOrganizer(userData);
 
     if (data.success) {
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
+      setUser(data.user);
+    }
+
+    return data;
+  };
+
+  // Register corporate sponsor
+  const registerSponsorAccount = async (userData) => {
+    const data = await registerSponsor(userData);
+
+    if (data.success) {
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
       setUser(data.user);
     }
 
@@ -67,23 +94,30 @@ export const AuthProvider = ({ children }) => {
 
   const createOrganizerProfileData = async (profileData) => {
     const data = await createOrganizerProfile(profileData);
-
     return data;
   };
 
   // Logout
   const logout = async () => {
-    await logoutUser();
+    try {
+      await logoutUser();
+    } catch {
+      // Ignore logout error
+    }
+    localStorage.removeItem("token");
+    localStorage.removeItem("nexus_demo_user");
     setUser(null);
   };
 
   const value = {
     user,
+    setUser,
     loading,
     isAuthenticated: !!user,
     login,
     register,
     registerOrganizerAccount,
+    registerSponsorAccount,
     createOrganizerProfileData,
     logout,
     fetchUser,

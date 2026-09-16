@@ -36,12 +36,13 @@ export const ParticipantLayout = ({ children }) => {
     }
   };
 
-  function handleLogout(){
-    authService.logoutUser();
-    toast.success("Logged out successfully");
-    navigate("/login");
+  const { logout } = useAuth();
 
-  }
+  const handleLogout = async () => {
+    await logout();
+    toast.success("Logged out successfully");
+    navigate("/login", { replace: true });
+  };
 
   return (
     <div className="min-h-screen theme-bg theme-text flex flex-col md:flex-row font-sans">

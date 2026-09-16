@@ -1,5 +1,6 @@
 import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
 import User from "../models/user.js";
+import Sponsor from "../models/sponsor.js";
 import { getResetPasswordTemplate } from "../utils/emailTemplate.js";
 import ErrorHandler from "../utils/ErrorHandler.js";
 import sendEmail from "../utils/sendEmail.js";
@@ -66,6 +67,7 @@ export const logoutUser = catchAsyncErrors(async(req,res,next)=>{
         message: "Logged out successfully",
     });
 })
+
 
 export const changePassword = catchAsyncErrors(async(req,res,next) =>{
     const {oldPassword,newPassword,confirmPassword} = req.body;
@@ -195,6 +197,48 @@ export const registerOrganizer = catchAsyncErrors(async (req, res, next) => {
         password,
         role: "organizer",
     });
+
+    sendToken(user, 201, res);
+});
+
+// Register sponsor -> /api/v1/auth/sponsor/register
+export const registerSponsor = catchAsyncErrors(async (req, res, next) => {
+    const { name, email, password, companyName, industry, website, phone } = req.body;
+
+    if (!name || !email || !password) {
+        return next(
+            new ErrorHandler(
+                "Please provide name, email and password",
+                400
+            )
+        );
+    }
+
+    const existingUser = await User.findOne({ email });
+
+    if (existingUser) {
+        return next(
+            new ErrorHandler("User with this email already exists", 400)
+        );
+    }
+
+    const user = await User.create({
+        name,
+        email,
+        password,
+        role: "sponsor",
+    });
+
+    // Also create Sponsor profile record
+    await Sponsor.create({
+        userId: user._id,
+        companyName: companyName || name,
+        industry: industry || "Gaming & Esports",
+        website: website || "",
+        contactEmail: email,
+        contactPhone: phone || "",
+        status: "verified",
+    }).catch((err) => console.error("Sponsor profile creation:", err.message));
 
     sendToken(user, 201, res);
 });

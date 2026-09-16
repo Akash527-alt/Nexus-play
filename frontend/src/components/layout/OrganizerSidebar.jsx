@@ -13,15 +13,17 @@ import {
 } from 'lucide-react';
 import { authService } from '../../services/authService.js';
 import { toast } from 'sonner';
+import { useAuth } from '../../context/AuthContext';
 
 export function OrganizerSidebar() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
-  function handleLogout(){
-    authService.logoutUser();
-    toast.success("logged out");
-    navigate("/login");
-  }
+  const handleLogout = async () => {
+    await logout();
+    toast.success("Logged out successfully");
+    navigate("/login", { replace: true });
+  };
 
   const navItems = [
     { label: 'Dashboard', path: '/organizer/dashboard', icon: LayoutDashboard },

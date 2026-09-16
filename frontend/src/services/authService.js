@@ -39,6 +39,12 @@ export const registerOrganizer = async (userData) => {
   return response.data;
 };
 
+// Register corporate sponsor account
+export const registerSponsor = async (userData) => {
+  const response = await api.post("/auth/sponsor/register", userData);
+  return response.data;
+};
+
 // Create organizer profile
 export const createOrganizerProfile = async (profileData) => {
   const response = await api.post("/organizer/profile", profileData);
@@ -73,6 +79,7 @@ export const authService = {
   registerUser,
   getCurrentUser,
   registerOrganizer,
+  registerSponsor,
   createOrganizerProfile,
   updateProfile,
   updateSettings,

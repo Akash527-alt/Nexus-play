@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Lock, Mail, Gamepad2, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, Gamepad2, Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -50,8 +50,10 @@ export function LoginPage() {
 
       if (role === "organizer") {
         navigate("/organizer/dashboard", { replace: true });
-      } else if (role === "superadmin") {
+      } else if (role === "superadmin" || role === "admin") {
         navigate("/superadmin/dashboard", { replace: true });
+      } else if (role === "sponsor") {
+        navigate("/sponsor/dashboard", { replace: true });
       } else {
         navigate("/participant/dashboard", { replace: true });
       }
@@ -80,26 +82,44 @@ export function LoginPage() {
           </h1>
 
           <p className="text-sm text-slate-400 mt-2">
-            Tournament management platform
+            Tournament management & esports platform
           </p>
         </div>
 
         {/* Login Card */}
         <div className="bg-[#0D1326] border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="mb-7">
+          <div className="mb-6">
             <h2 className="text-xl font-bold">Welcome back</h2>
-
             <p className="text-sm text-slate-400 mt-1">
-              Sign in to continue to NexusPlay
+              Sign in with your email and password
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Super Admin Notice Pill */}
+          <div className="mb-5 p-3 rounded-xl bg-[#080D1D] border border-slate-800 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 text-slate-400">
+              <ShieldAlert className="w-4 h-4 text-rose-400" />
+              <span>
+                Super Admin: <span className="font-mono text-rose-400">admin@nexusplay.gg</span>
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                setFormData({ email: "admin@nexusplay.gg", password: "admin123" })
+              }
+              className="text-[11px] font-bold text-rose-400 hover:underline cursor-pointer"
+            >
+              Fill Admin
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-slate-300 mb-2"
+                className="block text-xs font-medium text-slate-300 mb-1.5"
               >
                 Email
               </label>
@@ -115,24 +135,24 @@ export function LoginPage() {
                   onChange={handleChange}
                   placeholder="Enter your email"
                   autoComplete="email"
-                  className="w-full bg-[#080D1D] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full bg-[#080D1D] border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-slate-600 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
             </div>
 
             {/* Password */}
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-1.5">
                 <label
                   htmlFor="password"
-                  className="block text-sm font-medium text-slate-300"
+                  className="block text-xs font-medium text-slate-300"
                 >
                   Password
                 </label>
 
                 <Link
                   to="/forgot-password"
-                  className="text-xs text-indigo-400 hover:text-indigo-300 transition"
+                  className="text-[11px] text-indigo-400 hover:text-indigo-300 transition"
                 >
                   Forgot password?
                 </Link>
@@ -149,13 +169,13 @@ export function LoginPage() {
                   onChange={handleChange}
                   placeholder="Enter your password"
                   autoComplete="current-password"
-                  className="w-full bg-[#080D1D] border border-slate-700 rounded-xl pl-10 pr-11 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full bg-[#080D1D] border border-slate-700 rounded-xl pl-10 pr-11 py-2.5 text-xs text-white placeholder:text-slate-600 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 />
 
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition cursor-pointer"
                 >
                   {showPassword ? (
                     <EyeOff className="w-4 h-4" />
@@ -170,7 +190,7 @@ export function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed rounded-xl py-3 text-sm font-semibold transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/10"
+              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed rounded-xl py-3 text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/10 cursor-pointer mt-2"
             >
               {loading ? (
                 <>
@@ -178,22 +198,36 @@ export function LoginPage() {
                   Signing in...
                 </>
               ) : (
-                "Sign in"
+                "Sign In"
               )}
             </button>
           </form>
 
-          {/* Register */}
-          <div className="mt-7 pt-6 border-t border-slate-800 text-center">
-            <p className="text-sm text-slate-400">
-              Don't have an account?{" "}
+          {/* Registration Links */}
+          <div className="mt-6 pt-5 border-t border-slate-800 text-center space-y-2">
+            <p className="text-xs text-slate-400">
+              Need an account? Choose your profile:
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-semibold">
               <Link
                 to="/register"
-                className="text-indigo-400 font-semibold hover:text-indigo-300 transition"
+                className="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition"
               >
-                Create account
+                🎮 Player
               </Link>
-            </p>
+              <Link
+                to="/register/organizer"
+                className="px-2.5 py-1 rounded-lg bg-indigo-950/60 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-900/50 transition"
+              >
+                🏆 Organizer
+              </Link>
+              <Link
+                to="/register/sponsor"
+                className="px-2.5 py-1 rounded-lg bg-purple-950/60 border border-purple-500/30 text-purple-400 hover:bg-purple-900/50 transition"
+              >
+                🤝 Sponsor (Make Sponsor ID)
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -204,3 +238,5 @@ export function LoginPage() {
     </div>
   );
 }
+
+export default LoginPage;
