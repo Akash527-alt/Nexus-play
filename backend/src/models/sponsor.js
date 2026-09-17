@@ -56,13 +56,32 @@ const sponsorSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "verified", "active", "suspended"],
-      default: "verified",
+      enum: ["pending", "verified", "active", "rejected", "suspended"],
+      default: "pending",
     },
     totalInvested: {
       type: Number,
       default: 0,
     },
+
+    representativeName: {
+      type: String,
+      trim: true,
+    },
+
+    aadhaarNumber: {
+      type: String,
+      trim: true,
+      select: false,
+    },
+
+    panNumber: {
+      type: String,
+      uppercase: true,
+      trim: true,
+      select: false,
+    },
+
   },
   {
     timestamps: true,

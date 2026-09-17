@@ -6,8 +6,8 @@ import {
   logoutUser,
   registerOrganizer,
   registerSponsor,
-  createOrganizerProfile,
 } from "../services/authService";
+import { getOrganizerProfile,createOrganizerProfile, } from "../services/organizerService";
 
 const AuthContext = createContext();
 

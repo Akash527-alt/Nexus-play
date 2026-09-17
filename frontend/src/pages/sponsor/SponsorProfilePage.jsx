@@ -1,10 +1,37 @@
 import React, { useEffect, useState } from "react";
-import { Building2, Globe, Mail, Phone, Save, Sparkles, DollarSign, Gamepad2 } from "lucide-react";
+import {
+  Building2,
+  Globe,
+  Mail,
+  Phone,
+  Save,
+  DollarSign,
+  MapPin,
+  UserRound,
+  ShieldCheck,
+  CreditCard,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { sponsorService } from "../../services/sponsorService";
 
+export const initialProfile = {
+  companyName: "",
+  brandName: "",
+  industry: "",
+  website: "",
+  contactEmail: "",
+  contactPhone: "",
+  budgetRange: "",
+  description: "",
+  representativeName: "",
+  aadhaarNumber: "",
+  panNumber: "",
+  status: "pending",
+};
+
 export function SponsorProfilePage() {
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] = useState(initialProfile);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -12,189 +39,449 @@ export function SponsorProfilePage() {
     const loadProfile = async () => {
       try {
         setLoading(true);
-        const data = await sponsorService.getProfile();
-        setProfile(data);
+
+        const response = await sponsorService.getProfile();
+
+        const sponsor = response?.sponsor || response?.data || response;
+
+        setProfile((previous) => ({
+          ...initialProfile,
+          ...previous,
+          ...(sponsor || {}),
+          // Support old API field names if present
+          contactEmail: sponsor?.contactEmail || sponsor?.email || "",
+          contactPhone: sponsor?.contactPhone || sponsor?.phone || "",
+        }));
+      } catch (error) {
+        console.error("Failed to load sponsor profile:", error);
+
+        toast.error(
+          error.response?.data?.message || "Failed to load sponsor profile",
+        );
       } finally {
         setLoading(false);
       }
     };
+
     loadProfile();
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setProfile((prev) => ({ ...prev, [name]: value }));
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+
+    setProfile((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
   };
 
-  const handleSave = async (e) => {
-    e.preventDefault();
+  const validateProfile = () => {
+    const aadhaarRegex = /^\d{12}$/;
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/i;
+
+    if (!profile.companyName?.trim()) {
+      toast.error("Company name is required");
+      return false;
+    }
+
+    if (!profile.contactEmail?.trim()) {
+      toast.error("Contact email is required");
+      return false;
+    }
+
+    if (!profile.contactPhone?.trim()) {
+      toast.error("Contact phone is required");
+      return false;
+    }
+
+  
+    if (!profile.aadhaarNumber?.trim()) {
+      toast.error("Aadhaar number is required");
+      return false;
+    }
+
+    if (!aadhaarRegex.test(profile.aadhaarNumber.trim())) {
+      toast.error("Aadhaar number must contain exactly 12 digits");
+      return false;
+    }
+
+    if (!profile.panNumber?.trim()) {
+      toast.error("PAN number is required");
+      return false;
+    }
+
+    if (!panRegex.test(profile.panNumber.trim().toUpperCase())) {
+      toast.error("Please enter a valid PAN number");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSave = async (event) => {
+    event.preventDefault();
+
+    if (!validateProfile()) return;
+
     try {
       setSaving(true);
-      const res = await sponsorService.updateProfile(profile);
-      if (res.success) {
+
+      const payload = {
+        companyName: profile.companyName.trim(),
+        brandName: profile.brandName?.trim() || "",
+        industry: profile.industry?.trim() || "",
+        website: profile.website?.trim() || "",
+        contactEmail: profile.contactEmail.trim(),
+        contactPhone: profile.contactPhone.trim(),
+        budgetRange: profile.budgetRange?.trim() || "",
+        description: profile.description?.trim() || "",
+        representativeName: profile.representativeName?.trim() || "",
+        aadhaarNumber: profile.aadhaarNumber.trim(),
+        panNumber: profile.panNumber.trim().toUpperCase(),
+      };
+
+      const response = await sponsorService.updateProfile(payload);
+
+      if (response?.success !== false) {
         toast.success("Sponsor profile updated successfully!");
+
+        setProfile((previous) => ({
+          ...previous,
+          ...payload,
+          status:
+            response?.sponsor?.status ||
+            response?.data?.status ||
+            previous.status ||
+            "pending",
+        }));
       }
-    } catch {
-      toast.error("Failed to update sponsor profile");
+    } catch (error) {
+      console.error("Failed to update sponsor profile:", error);
+
+      toast.error(
+        error.response?.data?.message || "Failed to update sponsor profile",
+      );
     } finally {
       setSaving(false);
     }
   };
 
+  const getStatusStyle = (status) => {
+    const styles = {
+      pending: "border-amber-500/30 bg-amber-500/10 text-amber-400",
+
+      verified: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
+
+      active: "border-cyan-500/30 bg-cyan-500/10 text-cyan-400",
+
+      rejected: "border-rose-500/30 bg-rose-500/10 text-rose-400",
+
+      suspended: "border-slate-500/30 bg-slate-500/10 text-slate-300",
+    };
+
+    return styles[status] || "border-slate-700 bg-slate-800 text-slate-300";
+  };
+
   if (loading) {
-    return <div className="p-12 text-center text-xs theme-subtext">Loading profile...</div>;
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <Loader2 className="animate-spin text-indigo-400" size={30} />
+      </div>
+    );
   }
 
+  const currentStatus = profile.status || "pending";
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="mx-auto w-full max-w-5xl space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold theme-text">Corporate Sponsor Profile</h1>
-        <p className="text-xs md:text-sm theme-subtext">
-          Manage your brand identity, contact channels, and esports sponsorship preferences.
+        <div className="mb-2 flex items-center gap-2">
+          <ShieldCheck size={17} className="text-cyan-400" />
+
+          <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
+            Sponsor Verification
+          </span>
+        </div>
+
+        <h1 className="theme-text text-2xl font-bold sm:text-3xl">
+          Corporate Sponsor Profile
+        </h1>
+
+        <p className="theme-subtext mt-2 text-xs sm:text-sm">
+          Manage your company information, contact details, and verification
+          documents.
         </p>
       </div>
 
+      {/* Verification Status */}
+      <div
+        className={`flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between ${getStatusStyle(
+          currentStatus,
+        )}`}
+      >
+        <div className="flex items-start gap-3">
+          <ShieldCheck size={20} className="mt-0.5 shrink-0" />
+
+          <div>
+            <p className="text-sm font-semibold">Verification Status</p>
+
+            <p className="mt-1 text-xs opacity-80">
+              {currentStatus === "verified"
+                ? "Your sponsor profile has been verified."
+                : currentStatus === "rejected"
+                  ? "Your profile was rejected. Update your details and resubmit."
+                  : currentStatus === "suspended"
+                    ? "Your sponsor account is currently suspended."
+                    : "Complete your profile and submit your details for verification."}
+            </p>
+          </div>
+        </div>
+
+        <span className="w-fit rounded-full border border-current px-3 py-1 text-xs font-semibold capitalize">
+          {currentStatus}
+        </span>
+      </div>
+
       <form onSubmit={handleSave} className="space-y-6">
-        {/* Brand Overview Card */}
-        <div className="theme-card border theme-border rounded-2xl p-6 space-y-5 shadow-xs">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white font-extrabold flex items-center justify-center text-xl shadow-md">
-              {profile?.companyName?.slice(0, 2).toUpperCase() || "SP"}
+        {/* Company Information */}
+        <section className="theme-card space-y-5 rounded-2xl border theme-border p-4 shadow-sm sm:p-6">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-indigo-500/15 p-2 text-indigo-400">
+              <Building2 size={19} />
             </div>
+
             <div>
-              <h2 className="text-lg font-bold theme-text">{profile?.companyName || "Sponsor Company"}</h2>
-              <p className="text-xs theme-subtext flex items-center gap-1.5 mt-0.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>Verified Commercial Partner</span>
+              <h2 className="theme-text text-base font-bold">
+                Company Information
+              </h2>
+
+              <p className="theme-subtext text-xs">
+                Tell organizers about your business.
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t theme-border">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider theme-subtext mb-1.5">
-                Company Name
-              </label>
-              <input
-                type="text"
-                name="companyName"
-                value={profile?.companyName || ""}
-                onChange={handleChange}
-                className="theme-input w-full p-2.5 text-xs rounded-xl border theme-border outline-none focus:ring-2 focus:ring-indigo-500/20"
-                required
-              />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <InputField
+              label="Company Name"
+              name="companyName"
+              value={profile.companyName}
+              onChange={handleChange}
+              placeholder="Your company name"
+              required
+            />
+
+            <InputField
+              label="Brand Name"
+              name="brandName"
+              value={profile.brandName}
+              onChange={handleChange}
+              placeholder="Your brand name"
+            />
+
+            <InputField
+              label="Industry Sector"
+              name="industry"
+              value={profile.industry}
+              onChange={handleChange}
+              placeholder="Gaming, Software, Finance..."
+            />
+
+            <InputField
+              label="Website URL"
+              name="website"
+              type="url"
+              value={profile.website}
+              onChange={handleChange}
+              placeholder="https://yourbrand.com"
+              icon={Globe}
+            />
+
+            <InputField
+              label="Budget Range"
+              name="budgetRange"
+              value={profile.budgetRange}
+              onChange={handleChange}
+              placeholder="₹25,000 - ₹50,000"
+              icon={DollarSign}
+            />
+          </div>
+
+          <TextAreaField
+            label="Brand Bio & Mission"
+            name="description"
+            value={profile.description}
+            onChange={handleChange}
+            placeholder="Tell tournament organizers about your brand..."
+          />
+        </section>
+
+        {/* Contact Information */}
+        <section className="theme-card space-y-5 rounded-2xl border theme-border p-4 shadow-sm sm:p-6">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-cyan-500/15 p-2 text-cyan-400">
+              <UserRound size={19} />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider theme-subtext mb-1.5">
-                Industry Sector
-              </label>
-              <input
-                type="text"
-                name="industry"
-                value={profile?.industry || ""}
-                onChange={handleChange}
-                placeholder="e.g. Gaming Hardware, Energy Drinks, Fintech"
-                className="theme-input w-full p-2.5 text-xs rounded-xl border theme-border outline-none focus:ring-2 focus:ring-indigo-500/20"
-              />
-            </div>
+              <h2 className="theme-text text-base font-bold">
+                Contact Information
+              </h2>
 
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider theme-subtext mb-1.5">
-                Website URL
-              </label>
-              <div className="relative">
-                <Globe className="w-4 h-4 theme-subtext absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="url"
-                  name="website"
-                  value={profile?.website || ""}
-                  onChange={handleChange}
-                  placeholder="https://yourbrand.com"
-                  className="theme-input w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border theme-border outline-none focus:ring-2 focus:ring-indigo-500/20"
-                />
-              </div>
+              <p className="theme-subtext text-xs">
+                Details for partnership communication.
+              </p>
             </div>
+          </div>
 
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider theme-subtext mb-1.5">
-                Quarterly Budget Range
-              </label>
-              <div className="relative">
-                <DollarSign className="w-4 h-4 theme-subtext absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  name="budgetRange"
-                  value={profile?.budgetRange || ""}
-                  onChange={handleChange}
-                  placeholder="e.g. $25,000 - $50,000"
-                  className="theme-input w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border theme-border outline-none focus:ring-2 focus:ring-indigo-500/20"
-                />
-              </div>
-            </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <InputField
+              label="Partnership Work Email"
+              name="contactEmail"
+              type="email"
+              value={profile.contactEmail}
+              onChange={handleChange}
+              placeholder="partnerships@company.com"
+              icon={Mail}
+              required
+            />
+
+            <InputField
+              label="Phone Number"
+              name="contactPhone"
+              value={profile.contactPhone}
+              onChange={handleChange}
+              placeholder="+91 XXXXX XXXXX"
+              icon={Phone}
+              required
+            />
+
+            <InputField
+              label="Representative Name"
+              name="representativeName"
+              value={profile.representativeName}
+              onChange={handleChange}
+              placeholder="Authorized representative"
+            />
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider theme-subtext mb-1.5">
-              Brand Bio & Mission
-            </label>
-            <textarea
-              name="description"
-              rows={3}
-              value={profile?.description || ""}
-              onChange={handleChange}
-              placeholder="Tell tournament organizers about your brand values and goals..."
-              className="theme-input w-full p-3 text-xs rounded-xl border theme-border outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none"
-            />
-          </div>
-        </div>
+          
 
-        {/* Contact Channels */}
-        <div className="theme-card border theme-border rounded-2xl p-6 space-y-4 shadow-xs">
-          <h3 className="text-sm font-bold theme-text">Direct Point of Contact</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider theme-subtext mb-1.5">
-                Partnership Work Email
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 theme-subtext absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="email"
-                  name="email"
-                  value={profile?.email || ""}
-                  onChange={handleChange}
-                  className="theme-input w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border theme-border outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  required
-                />
-              </div>
+            <div className="relative">
+              <MapPin
+                size={16}
+                className="theme-subtext absolute left-3 top-3"
+              />
+
+             
+            </div>
+          </div>
+        </section>
+
+        {/* KYC Details */}
+        <section className="theme-card space-y-5 rounded-2xl border border-amber-500/20 p-4 shadow-sm sm:p-6">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-amber-500/15 p-2 text-amber-400">
+              <CreditCard size={19} />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider theme-subtext mb-1.5">
-                Phone Number
-              </label>
-              <div className="relative">
-                <Phone className="w-4 h-4 theme-subtext absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  name="phone"
-                  value={profile?.phone || ""}
-                  onChange={handleChange}
-                  className="theme-input w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border theme-border outline-none focus:ring-2 focus:ring-indigo-500/20"
-                />
-              </div>
+              <h2 className="theme-text text-base font-bold">
+                Verification Documents
+              </h2>
+
+              <p className="theme-subtext mt-1 text-xs">
+                Aadhaar and PAN are required for Superadmin verification.
+              </p>
             </div>
           </div>
-        </div>
 
-        <div className="flex justify-end">
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-5 text-amber-400">
+            Enter your details carefully. These documents are sensitive and
+            should only be submitted through your trusted platform.
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className="theme-subtext mb-1.5 block text-xs font-bold uppercase tracking-wider">
+                Aadhaar Number
+              </label>
+
+              <input
+                type="text"
+                name="aadhaarNumber"
+                value={profile.aadhaarNumber}
+                onChange={(event) => {
+                  const value = event.target.value
+                    .replace(/\D/g, "")
+                    .slice(0, 12);
+
+                  setProfile((previous) => ({
+                    ...previous,
+                    aadhaarNumber: value,
+                  }));
+                }}
+                inputMode="numeric"
+                maxLength={12}
+                pattern="[0-9]{12}"
+                placeholder="12-digit Aadhaar number"
+                required
+                className="theme-input w-full rounded-xl border theme-border p-3 text-xs outline-none transition focus:ring-2 focus:ring-amber-500/30"
+              />
+
+              <p className="theme-subtext mt-1 text-[10px]">
+                Must contain exactly 12 digits.
+              </p>
+            </div>
+
+            <div>
+              <label className="theme-subtext mb-1.5 block text-xs font-bold uppercase tracking-wider">
+                PAN Number
+              </label>
+
+              <input
+                type="text"
+                name="panNumber"
+                value={profile.panNumber}
+                onChange={(event) => {
+                  const value = event.target.value
+                    .toUpperCase()
+                    .replace(/[^A-Z0-9]/g, "")
+                    .slice(0, 10);
+
+                  setProfile((previous) => ({
+                    ...previous,
+                    panNumber: value,
+                  }));
+                }}
+                maxLength={10}
+                placeholder="ABCDE1234F"
+                required
+                className="theme-input w-full rounded-xl border theme-border p-3 text-xs uppercase outline-none transition focus:ring-2 focus:ring-amber-500/30"
+              />
+
+              <p className="theme-subtext mt-1 text-[10px]">
+                Format: 5 letters, 4 digits, 1 letter.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Submit */}
+        <div className="flex flex-col-reverse gap-3 pb-4 sm:flex-row sm:justify-end">
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/30 transition cursor-pointer disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-xs font-bold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
-            <Save className="w-4 h-4" />
+            {saving ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Save size={16} />
+            )}
+
             <span>{saving ? "Saving Changes..." : "Save Profile Details"}</span>
           </button>
         </div>
@@ -203,4 +490,60 @@ export function SponsorProfilePage() {
   );
 }
 
-export default SponsorProfilePage;
+/* Reusable Input Component */
+const InputField = ({
+  label,
+  name,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  icon: Icon,
+  required = false,
+}) => (
+  <div className="min-w-0">
+    <label className="theme-subtext mb-1.5 block text-xs font-bold uppercase tracking-wider">
+      {label}
+    </label>
+
+    <div className="relative">
+      {Icon && (
+        <Icon
+          size={16}
+          className="theme-subtext absolute left-3 top-1/2 -translate-y-1/2"
+        />
+      )}
+
+      <input
+        type={type}
+        name={name}
+        value={value || ""}
+        onChange={onChange}
+        placeholder={placeholder}
+        required={required}
+        className={`theme-input w-full rounded-xl border theme-border p-3 text-xs outline-none transition focus:ring-2 focus:ring-indigo-500/30 ${
+          Icon ? "pl-9" : ""
+        }`}
+      />
+    </div>
+  </div>
+);
+
+/* Reusable Textarea Component */
+const TextAreaField = ({ label, name, value, onChange, placeholder }) => (
+  <div>
+    <label className="theme-subtext mb-1.5 block text-xs font-bold uppercase tracking-wider">
+      {label}
+    </label>
+
+    <textarea
+      name={name}
+      value={value || ""}
+      onChange={onChange}
+      rows={3}
+      placeholder={placeholder}
+      className="theme-input w-full resize-none rounded-xl border theme-border p-3 text-xs outline-none transition focus:ring-2 focus:ring-indigo-500/30"
+    />
+  </div>
+);
+

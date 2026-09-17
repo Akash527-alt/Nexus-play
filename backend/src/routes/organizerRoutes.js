@@ -1,7 +1,7 @@
 import express from "express";
 
 import { authorizeRoles, isAuthenticatedUser } from "../middleware/auth.js";
-import { createOrganizerProfile, getOrganizerDashboard } from "../controller/organizerController.js";
+import { createOrganizerProfile, getOrganizerDashboard, getOrganizerProfile, updateOrganizerProfile } from "../controller/organizerController.js";
 import { getMyTournaments } from "../controller/tournamentController.js";
 
 const router = express.Router();
@@ -13,6 +13,14 @@ router.post(
     createOrganizerProfile
 );
 
+
+router.put(
+    "/profile",
+    isAuthenticatedUser,
+    authorizeRoles("organizer"),
+    updateOrganizerProfile
+);
+
 // Organizer dashboard
 router.get(
     "/dashboard",
@@ -21,6 +29,13 @@ router.get(
     getOrganizerDashboard
 );
 
+router.get(
+    "/profile",
+    isAuthenticatedUser,
+    authorizeRoles("organizer"),
+    getOrganizerProfile
+);
+ 
 
 
 

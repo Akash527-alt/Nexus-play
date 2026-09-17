@@ -11,12 +11,7 @@ export const getMySponsorProfile = catchAsyncErrors(async (req, res, next) => {
   let sponsor = await Sponsor.findOne({ userId: req.user._id });
 
   if (!sponsor) {
-    // If not found yet, create initial default profile
-    sponsor = await Sponsor.create({
-      userId: req.user._id,
-      companyName: req.user.name || "Brand Partner",
-      contactEmail: req.user.email,
-    });
+    return next(new ErrorHandler("sponser not found",404));
   }
 
   res.status(200).json({
@@ -40,7 +35,43 @@ export const updateSponsorProfile = catchAsyncErrors(async (req, res, next) => {
     preferredLocations,
     description,
     logoUrl,
+    representativeName,
+    aadhaarNumber,
+    panNumber,
   } = req.body;
+  
+  if (
+    !companyName ||
+    !contactEmail ||
+    !aadhaarNumber ||
+    !panNumber
+  ) {
+    return next(
+      new ErrorHandler(
+        "Company name, email, address, Aadhaar and PAN are required",
+        400
+      )
+    );
+  }
+
+  const aadhaarRegex = /^\d{12}$/;
+
+  if (!aadhaarRegex.test(aadhaarNumber)) {
+    return next(
+      new ErrorHandler(
+        "Aadhaar number must contain exactly 12 digits",
+        400
+      )
+    );
+  }
+
+  const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i;
+
+  if (!panRegex.test(panNumber)) {
+    return next(
+      new ErrorHandler("Please enter a valid PAN number", 400)
+    );
+  }
 
   let sponsor = await Sponsor.findOne({ userId: req.user._id });
 
@@ -58,6 +89,10 @@ export const updateSponsorProfile = catchAsyncErrors(async (req, res, next) => {
       preferredLocations,
       description,
       logoUrl,
+      representativeName,
+      aadhaarNumber,
+      panNumber: panNumber.toUpperCase(),
+      status: "pending",
     });
   } else {
     sponsor.companyName = companyName || sponsor.companyName;
@@ -71,6 +106,19 @@ export const updateSponsorProfile = catchAsyncErrors(async (req, res, next) => {
     if (preferredLocations !== undefined) sponsor.preferredLocations = preferredLocations;
     if (description !== undefined) sponsor.description = description;
     if (logoUrl !== undefined) sponsor.logoUrl = logoUrl;
+    if (representativeName !== undefined) {
+      sponsor.representativeName = representativeName;
+    }
+
+    if (aadhaarNumber !== undefined) {
+      sponsor.aadhaarNumber = aadhaarNumber;
+    }
+
+    if (panNumber !== undefined) {
+      sponsor.panNumber = panNumber.toUpperCase();
+    }
+
+    sponsor.status = "pending";
 
     await sponsor.save();
   }

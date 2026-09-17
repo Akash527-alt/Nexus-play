@@ -46,6 +46,12 @@ const organizerSchema = new mongoose.Schema(
             trim: true,
         },
 
+        representativeName: {
+            type: String,
+            trim: true,
+        },
+
+
         contactEmail: {
             type: String,
             required: [true, "Please enter contact email"],
@@ -58,6 +64,22 @@ const organizerSchema = new mongoose.Schema(
             required: [true, "Please enter contact phone"],
             trim: true,
         },
+
+        aadhaarNumber: {
+            type: String,
+            // required: [true, "Please enter Aadhaar number"],
+            trim: true,
+            select: false,
+        },
+
+        panNumber: {
+            type: String,
+            // required: [true, "Please enter PAN number"],
+            uppercase: true,
+            trim: true,
+            select: false,
+        },
+        
         verificationStatus: {
             type: String,
             enum: ["pending", "verified", "rejected", "suspended"],

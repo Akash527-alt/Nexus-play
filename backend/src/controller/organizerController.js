@@ -5,11 +5,6 @@ import Tournament from "../models/tournament.js";
 
 export const createOrganizerProfile = catchAsyncErrors(
     async (req, res, next) => {
-
-        console.log("1. createOrganizerProfile reached");
-        console.log("2. req.user:", req.user?._id, req.user?.role);
-        console.log("3. req.body:", req.body);
-
         const {
             organizationName,
             organizationType,
@@ -19,8 +14,7 @@ export const createOrganizerProfile = catchAsyncErrors(
             contactPhone,
         } = req.body;
 
-        console.log("4. Body destructured");
-
+        // Validate required fields
         if (
             !organizationName ||
             !organizationType ||
@@ -30,14 +24,13 @@ export const createOrganizerProfile = catchAsyncErrors(
         ) {
             return next(
                 new ErrorHandler(
-                    "Please provide all required organization details",
+                    "Please provide all required organizer profile details",
                     400
                 )
             );
         }
 
-        console.log("5. Required fields passed");
-
+        // Check user role
         if (req.user.role !== "organizer") {
             return next(
                 new ErrorHandler(
@@ -47,14 +40,10 @@ export const createOrganizerProfile = catchAsyncErrors(
             );
         }
 
-        console.log("6. Organizer role confirmed");
-
+        // Check whether profile already exists
         const existingOrganizer = await Organizer.findOne({
             userId: req.user._id,
         });
-
-        console.log("7. Organizer findOne completed");
-        console.log("Existing organizer:", existingOrganizer);
 
         if (existingOrganizer) {
             return next(
@@ -65,29 +54,41 @@ export const createOrganizerProfile = catchAsyncErrors(
             );
         }
 
-        console.log("8. Creating organizer");
-
+        // Create organizer profile
         const organizer = await Organizer.create({
             organizerId: `ORG-${Date.now()}`,
             userId: req.user._id,
+
             organizationName,
             organizationType,
             description,
             address,
+
             contactEmail,
             contactPhone,
+
             verificationStatus: "pending",
         });
 
+        // Mark profile as complete
         req.user.isProfileComplete = true;
         await req.user.save();
-
-        console.log("9. Organizer created:", organizer._id);
 
         res.status(201).json({
             success: true,
             message: "Organizer profile submitted for verification",
-            organizer,
+
+            organizer: {
+                _id: organizer._id,
+                organizerId: organizer.organizerId,
+                organizationName: organizer.organizationName,
+                organizationType: organizer.organizationType,
+                description: organizer.description,
+                address: organizer.address,
+                contactEmail: organizer.contactEmail,
+                contactPhone: organizer.contactPhone,
+                verificationStatus: organizer.verificationStatus,
+            },
         });
     }
 );
@@ -201,6 +202,158 @@ export const getOrganizerDashboard = catchAsyncErrors(
             },
 
             recentTournaments,
+        });
+    }
+);
+
+export const updateOrganizerProfile = catchAsyncErrors(
+    async (req, res, next) => {
+        const {
+            organizationName,
+            organizationType,
+            description,
+            address,
+            representativeName,
+            contactEmail,
+            contactPhone,
+            aadhaarNumber,
+            panNumber,
+        } = req.body;
+
+        // Find organizer profile
+        const organizer = await Organizer.findOne({
+            userId: req.user._id,
+        }).select("+aadhaarNumber +panNumber");
+
+        if (!organizer) {
+            return next(
+                new ErrorHandler(
+                    "Organizer profile not found",
+                    404
+                )
+            );
+        }
+
+        // Validate required fields
+        if (
+            !organizationName ||
+            !organizationType ||
+            !address ||
+            !contactEmail ||
+            !contactPhone ||
+            !aadhaarNumber ||
+            !panNumber
+        ) {
+            return next(
+                new ErrorHandler(
+                    "Please provide all required organizer profile details",
+                    400
+                )
+            );
+        }
+
+        // Validate Aadhaar number
+        const aadhaarRegex = /^\d{12}$/;
+
+        if (!aadhaarRegex.test(aadhaarNumber)) {
+            return next(
+                new ErrorHandler(
+                    "Aadhaar number must contain exactly 12 digits",
+                    400
+                )
+            );
+        }
+
+        // Validate PAN number
+        const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i;
+
+        if (!panRegex.test(panNumber)) {
+            return next(
+                new ErrorHandler(
+                    "Please enter a valid PAN number",
+                    400
+                )
+            );
+        }
+
+        // Update organizer profile
+        organizer.organizationName = organizationName;
+        organizer.organizationType = organizationType;
+        organizer.description = description;
+        organizer.address = address;
+
+        organizer.representativeName = representativeName;
+
+        organizer.contactEmail = contactEmail;
+        organizer.contactPhone = contactPhone;
+
+        organizer.aadhaarNumber = aadhaarNumber;
+        organizer.panNumber = panNumber.toUpperCase();
+
+        // Resubmission requires verification again
+        if (
+            organizer.verificationStatus === "rejected" ||
+            organizer.verificationStatus === "pending"
+        ) {
+            organizer.verificationStatus = "pending";
+        }
+
+        await organizer.save();
+
+        // Mark profile as complete
+        req.user.isProfileComplete = true;
+        await req.user.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Organizer profile updated successfully",
+
+            organizer: {
+                _id: organizer._id,
+                organizerId: organizer.organizerId,
+                organizationName: organizer.organizationName,
+                organizationType: organizer.organizationType,
+                description: organizer.description,
+                address: organizer.address,
+                representativeName: organizer.representativeName,
+                contactEmail: organizer.contactEmail,
+                contactPhone: organizer.contactPhone,
+                verificationStatus: organizer.verificationStatus,
+            },
+        });
+    }
+);
+
+
+export const getOrganizerProfile = catchAsyncErrors(
+    async (req, res, next) => {
+        const organizer = await Organizer.findOne({
+            userId: req.user._id,
+        });
+
+        if (!organizer) {
+            return res.status(200).json({
+                success: true,
+                profileExists: false,
+                organizer: null,
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            profileExists: true,
+            organizer: {
+                _id: organizer._id,
+                organizerId: organizer.organizerId,
+                organizationName: organizer.organizationName,
+                organizationType: organizer.organizationType,
+                description: organizer.description,
+                address: organizer.address,
+                representativeName: organizer.representativeName,
+                contactEmail: organizer.contactEmail,
+                contactPhone: organizer.contactPhone,
+                verificationStatus: organizer.verificationStatus,
+            },
         });
     }
 );

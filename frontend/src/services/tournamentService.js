@@ -1,7 +1,7 @@
 import api from './api';
 
 export const tournamentService = {
-  // Public/Participant List
+  // Tournaments lists
   getAll: async () => {
     const res = await api.get('/tournaments');
     return res.data;
@@ -9,7 +9,7 @@ export const tournamentService = {
 
   // Organizer List
   getMy: async () => {
-    const res = await api.get('/tournaments');
+    const res = await api.get('/tournaments/me');
     return res.data;
   },
 

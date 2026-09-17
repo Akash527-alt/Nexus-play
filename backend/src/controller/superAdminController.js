@@ -1,7 +1,7 @@
 import Organizer from "../models/organizer.js";
 import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
 import ErrorHandler from "../utils/ErrorHandler.js";
-
+import Sponsor from "../models/sponsor.js";
 
 
 export const getSuperAdminProfile = catchAsyncErrors(
@@ -25,8 +25,7 @@ export const getSuperAdminProfile = catchAsyncErrors(
     }
 );
 
-// GET /api/v1/superadmin/organizers
-
+// GET  ->  /api/v1/superadmin/organizers
 export const getAllOrganizers = catchAsyncErrors(
     async (req, res, next) => {
 
@@ -43,11 +42,7 @@ export const getAllOrganizers = catchAsyncErrors(
 );
 
 
-// =====================================================
-// GET SINGLE ORGANIZER
-// GET /api/v1/superadmin/organizers/:id
-// =====================================================
-
+// GET SINGLE ORGANIZER   -> /api/v1/superadmin/organizers/:id
 export const getOrganizer = catchAsyncErrors(
     async (req, res, next) => {
 
@@ -71,17 +66,14 @@ export const getOrganizer = catchAsyncErrors(
 );
 
 
-// =====================================================
-// VERIFY ORGANIZER
-// PUT /api/v1/superadmin/organizers/:id/verify
-// =====================================================
 
+// VERIFY ORGANIZER -> PUT  /api/v1/superadmin/organizers/:id/verify
 export const verifyOrganizer = catchAsyncErrors(
     async (req, res, next) => {
 
-        const organizer = await Organizer.findById(
-            req.params.id
-        );
+        const organizer = await Organizer.findById(req.params.id)
+            .select("+aadhaarNumber +panNumber");
+
 
         if (!organizer) {
             return next(
@@ -92,14 +84,26 @@ export const verifyOrganizer = catchAsyncErrors(
             );
         }
 
-        if (organizer.verificationStatus === "verified") {
+        if (
+            !organizer.aadhaarNumber ||
+            !organizer.panNumber
+        ) {
             return next(
                 new ErrorHandler(
-                    "Organizer is already verified",
+                    "Organizer profile is incomplete. Aadhaar and PAN details are required before verification.",
                     400
                 )
             );
         }
+
+        // if (organizer.verificationStatus === "verified") {
+        //     return next(
+        //         new ErrorHandler(
+        //             "Organizer is already verified",
+        //             400
+        //         )
+        //     );
+        // }
 
         organizer.verificationStatus = "verified";
 
@@ -114,11 +118,8 @@ export const verifyOrganizer = catchAsyncErrors(
 );
 
 
-// =====================================================
-// REJECT ORGANIZER
-// PUT /api/v1/superadmin/organizers/:id/reject
-// =====================================================
 
+// REJECT ORGANIZER ->  PUT /api/v1/superadmin/organizers/:id/reject
 export const rejectOrganizer = catchAsyncErrors(
     async (req, res, next) => {
 
@@ -157,11 +158,8 @@ export const rejectOrganizer = catchAsyncErrors(
 );
 
 
-// =====================================================
-// SUSPEND ORGANIZER
-// PUT /api/v1/superadmin/organizers/:id/suspend
-// =====================================================
 
+// SUSPEND ORGANIZER -> PUT /api/v1/superadmin/organizers/:id/suspend
 export const suspendOrganizer = catchAsyncErrors(
     async (req, res, next) => {
 
@@ -197,4 +195,118 @@ export const suspendOrganizer = catchAsyncErrors(
             organizer,
         });
     }
+);
+
+// GET ALL SPONSORS
+export const getAllSponsors = catchAsyncErrors(
+    async (req, res, next) => {
+        const sponsors = await Sponsor.find()
+            .populate("userId", "name email")
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({
+            success: true,
+            count: sponsors.length,
+            sponsors,
+        });
+    }
+);
+
+
+// GET SINGLE SPONSOR
+export const getSponsor = catchAsyncErrors(
+    async (req, res, next) => {
+        const sponsor = await Sponsor.findById(req.params.id)
+            .select("+aadhaarNumber +panNumber")
+            .populate("userId", "name email");
+
+        if (!sponsor) {
+            return next(
+                new ErrorHandler("Sponsor not found", 404)
+            );
+        }
+
+        res.status(200).json({
+            success: true,
+            sponsor,
+        });
+    }
+);
+
+
+// VERIFY SPONSOR
+export const verifySponsor = catchAsyncErrors(
+    async (req, res, next) => {
+        const sponsor = await Sponsor.findById(req.params.id)
+            .select("+aadhaarNumber +panNumber");
+
+        if (!sponsor) {
+            return next(
+                new ErrorHandler("Sponsor not found", 404)
+            );
+        }
+
+        if (!sponsor.aadhaarNumber || !sponsor.panNumber) {
+            return next(
+                new ErrorHandler(
+                    "Sponsor profile is incomplete. Aadhaar and PAN are required.",
+                    400
+                )
+            );
+        }
+
+        sponsor.status = "verified";
+        await sponsor.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Sponsor verified successfully",
+            sponsor,
+        });
+    }
+);
+
+// REJECT SPONSOR
+export const rejectSponsor = catchAsyncErrors(
+  async (req, res, next) => {
+    const sponsor = await Sponsor.findById(req.params.id);
+
+    if (!sponsor) {
+      return next(
+        new ErrorHandler("Sponsor not found", 404)
+      );
+    }
+
+    sponsor.status = "rejected";
+    await sponsor.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Sponsor rejected successfully",
+      sponsor,
+    });
+  }
+);
+
+
+// SUSPEND SPONSOR
+export const suspendSponsor = catchAsyncErrors(
+  async (req, res, next) => {
+    const sponsor = await Sponsor.findById(req.params.id);
+
+    if (!sponsor) {
+      return next(
+        new ErrorHandler("Sponsor not found", 404)
+      );
+    }
+
+    sponsor.status = "suspended";
+    await sponsor.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Sponsor suspended successfully",
+      sponsor,
+    });
+  }
 );

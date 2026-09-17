@@ -45,11 +45,7 @@ export const registerSponsor = async (userData) => {
   return response.data;
 };
 
-// Create organizer profile
-export const createOrganizerProfile = async (profileData) => {
-  const response = await api.post("/organizer/profile", profileData);
-  return response.data;
-};
+
 
 // Update User Profile
 export const updateProfile = async (profileData) => {
@@ -80,7 +76,6 @@ export const authService = {
   getCurrentUser,
   registerOrganizer,
   registerSponsor,
-  createOrganizerProfile,
   updateProfile,
   updateSettings,
   logoutUser,

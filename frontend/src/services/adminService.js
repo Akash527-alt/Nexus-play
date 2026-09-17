@@ -329,7 +329,7 @@ export const adminService = {
   // Users Management
   getUsers: async () => {
     try {
-      const res = await api.get("/admin/users");
+      const res = await api.get("/superadmin/organizers");
       if (res.data?.success && Array.isArray(res.data.data)) return res.data.data;
     } catch {
       // Fallback
@@ -337,49 +337,70 @@ export const adminService = {
     return getStored(STORAGE_KEY_ADMIN_USERS, INITIAL_USERS);
   },
 
-  updateUserStatus: async (userId, status) => {
-    try {
-      const res = await api.patch(`/admin/users/${userId}/status`, { status });
-      if (res.data?.success) return res.data;
-    } catch {
-      // Fallback
-    }
-    const users = getStored(STORAGE_KEY_ADMIN_USERS, INITIAL_USERS);
-    const updated = users.map((u) => (u.id === userId ? { ...u, status } : u));
-    setStored(STORAGE_KEY_ADMIN_USERS, updated);
-    return { success: true, status };
-  },
-
-  updateUserRole: async (userId, role) => {
-    const users = getStored(STORAGE_KEY_ADMIN_USERS, INITIAL_USERS);
-    const updated = users.map((u) => (u.id === userId ? { ...u, role } : u));
-    setStored(STORAGE_KEY_ADMIN_USERS, updated);
-    return { success: true, role };
-  },
-
   // Organizers Oversight
   getOrganizers: async () => {
-    try {
-      const res = await api.get("/admin/organizers");
-      if (res.data?.success && Array.isArray(res.data.data)) return res.data.data;
-    } catch {
-      // Fallback
-    }
-    return getStored(STORAGE_KEY_ADMIN_ORGANIZERS, INITIAL_ORGANIZERS);
+    const res = await api.get("/superadmin/organizers");
+    return res.data.organizers;
   },
 
-  updateOrganizerStatus: async (orgId, status) => {
-    try {
-      const res = await api.patch(`/admin/organizers/${orgId}/status`, { status });
-      if (res.data?.success) return res.data;
-    } catch {
-      // Fallback
-    }
-    const orgs = getStored(STORAGE_KEY_ADMIN_ORGANIZERS, INITIAL_ORGANIZERS);
-    const updated = orgs.map((o) => (o.id === orgId ? { ...o, status } : o));
-    setStored(STORAGE_KEY_ADMIN_ORGANIZERS, updated);
-    return { success: true, status };
+  getOrganizerDetails: async (organizerId) => {
+    const res = await api.get(`/superadmin/organizers/${organizerId}`);
+    return res.data;
   },
+
+  verifyOrganizer: async (organizerId) => {
+    const res = await api.put(`/superadmin/organizers/${organizerId}/verify`);
+    return res.data;
+  },
+
+  rejectOrganizer: async (organizerId) => {
+    const res = await api.put(`/superadmin/organizers/${organizerId}/reject`);
+    return res.data;
+  },
+
+  suspendOrganizer: async (organizerId) => {
+    const res = await api.put(`/superadmin/organizers/${organizerId}/suspend`);
+    return res.data;
+  },
+
+  getSponsors: async () => {
+    const res = await api.get("/superadmin/sponsors");
+    return res.data.sponsors || res.data.data;
+  },
+
+  getSponsorDetails: async (sponsorId) => {
+    const res = await api.get(
+      `/superadmin/sponsors/${sponsorId}`
+    );
+
+    return res.data;
+  },
+
+  verifySponsor: async (sponsorId) => {
+    const res = await api.put(
+      `/superadmin/sponsors/${sponsorId}/verify`
+    );
+
+    return res.data;
+  },
+
+  rejectSponsor: async (sponsorId) => {
+    const res = await api.put(
+      `/superadmin/sponsors/${sponsorId}/reject`
+    );
+
+    return res.data;
+  },
+
+  suspendSponsor: async (sponsorId) => {
+    const res = await api.put(
+      `/superadmin/sponsors/${sponsorId}/suspend`
+    );
+
+    return res.data;
+  },
+
+
 
   // Tournaments Moderation
   getTournaments: async () => {

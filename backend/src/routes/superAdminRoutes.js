@@ -6,12 +6,17 @@ import {
     verifyOrganizer,
     rejectOrganizer,
     suspendOrganizer,
+    getSponsor,
+    verifySponsor,
+    rejectSponsor,
+    suspendSponsor,
 } from "../controller/superAdminController.js";
 
 import {
     isAuthenticatedUser,
     authorizeRoles,
 } from "../middleware/auth.js";
+import { getAllSponsors } from "../controller/sponsorController.js";
 
 const router = express.Router();
 
@@ -59,5 +64,39 @@ router.put(
     authorizeRoles("superadmin"),
     suspendOrganizer
 );
+
+
+// Sponsor Management
+router.get(
+    "/sponsors",
+    isAuthenticatedUser,
+    authorizeRoles("superadmin"),
+    getAllSponsors
+);
+router.get(
+    "/sponsors/:id",
+    isAuthenticatedUser,
+    authorizeRoles("superadmin"),
+    getSponsor
+);
+router.put(
+    "/sponsors/:id/verify",
+    isAuthenticatedUser,
+    authorizeRoles("superadmin"),
+    verifySponsor
+);
+router.put(
+    "/sponsors/:id/reject",
+    isAuthenticatedUser,
+    authorizeRoles("superadmin"),
+    rejectSponsor
+);
+router.put(
+    "/sponsors/:id/suspend",
+    isAuthenticatedUser,
+    authorizeRoles("superadmin"),
+    suspendSponsor
+);
+
 
 export default router;
