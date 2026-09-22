@@ -4,8 +4,10 @@ import {
     getMyRegistrations,
     getMyRegistration,
     cancelRegistration,
+    getTournamentRegistrations,
 } from "../controller/registrationController.js";
 import { authorizeRoles, isAuthenticatedUser } from "../middleware/auth.js";
+import { isTournamentOwner } from "../middleware/tournament.js";
 
 const router = express.Router();
 
@@ -36,5 +38,13 @@ router.delete(
     authorizeRoles("user"),
     cancelRegistration
 );
+
+
+router.get(
+  "/tournaments/:tournamentId/registrations",
+  isAuthenticatedUser,
+  getTournamentRegistrations
+);
+
 
 export default router;

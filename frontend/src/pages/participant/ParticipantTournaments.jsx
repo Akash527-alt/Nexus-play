@@ -1,94 +1,133 @@
 import React, { useEffect, useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { participantService } from "../../services/participantService";
-import { RegisterModal } from "../../components/tournaments/RegisterModal";
+import { ParticipantRegistrationModal } from "../../components/participant/ParticipantRegistrationModal";
 
 export const ParticipantTournaments = () => {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  
+  const [registeredTournamentIds, setRegisteredTournamentIds] = useState(
+    new Set(),
+  );
+
   // Controls the Register Form Modal
   const [selectedTournament, setSelectedTournament] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchTournaments();
+    fetchMyRegistrations();
   }, []);
+
+  const fetchMyRegistrations = async () => {
+    try {
+      const response = await participantService.getMyRegistrations();
+
+      const registrations = response?.data || response?.registrations || [];
+
+      const ids = new Set(
+        registrations
+          .map((registration) => {
+            const tournament =
+              registration.tournament?._id ||
+              registration.tournament?.id ||
+              registration.tournament;
+
+            return tournament?.toString();
+          })
+          .filter(Boolean),
+      );
+
+      setRegisteredTournamentIds(ids);
+    } catch (error) {
+      console.error("Failed to fetch registrations:", error);
+    }
+  };
 
   const fetchTournaments = async () => {
     try {
       setLoading(true);
+
       let list = [];
 
-      // 1. Try fetching from Backend API
+      // 1. Fetch tournaments from backend API
       try {
-        if (participantService && typeof participantService.getTournaments === "function") {
+        if (
+          participantService &&
+          typeof participantService.getTournaments === "function"
+        ) {
           const res = await participantService.getTournaments();
-          if (Array.isArray(res)) {
-            list = res;
-          } else if (Array.isArray(res?.tournaments)) {
-            list = res.tournaments;
-          } else if (Array.isArray(res?.data)) {
-            list = res.data;
-          } else if (Array.isArray(res?.data?.tournaments)) {
-            list = res.data.tournaments;
-          }
+          list = res?.tournaments || [];
         }
       } catch (backendErr) {
-        console.warn("Backend fetch bypassed, retrieving local storage sync tournaments:", backendErr);
+        console.warn(
+          "Backend fetch failed. Retrieving tournaments from local storage:",
+          backendErr,
+        );
       }
 
-      // 2. Read local sync arrays across organizer/participant keys
+      // 2. Read local storage arrays
       const readArray = (key) => {
         try {
           return JSON.parse(localStorage.getItem(key) || "[]");
-        } catch (e) {
+        } catch (error) {
           return [];
         }
       };
 
-      const local1 = readArray("nexus_tournaments");
-      const local2 = readArray("my_tournaments");
-      const localRegs = readArray("participant_registrations");
-      const myRegs = readArray("my_registrations");
+      const localTournaments = readArray("nexus_tournaments");
+      const myTournaments = readArray("my_tournaments");
+      const localRegistrations = readArray("participant_registrations");
+      const myRegistrations = readArray("my_registrations");
 
-      // Combine registration records
+      // 3. Collect registered tournament IDs
       const allRegisteredIds = [
-        ...localRegs,
-        ...myRegs.map((r) => r.tournamentId || r.id || r._id)
+        ...localRegistrations,
+        ...myRegistrations.map(
+          (registration) =>
+            registration.tournamentId || registration.id || registration._id,
+        ),
       ].map(String);
 
-      // 3. Deduplicate and normalize objects safely
+      // 4. Deduplicate and normalize tournaments
       const combinedMap = new Map();
-      [...list, ...local1, ...local2].forEach((item) => {
-        const key = String(item._id || item.id || item.title || item.name);
-        if (key) {
-          const isReg =
-            allRegisteredIds.includes(key) ||
-            item.isRegistered ||
-            item.status === "registered" ||
-            false;
 
-          combinedMap.set(key, {
-            ...item,
-            _id: key,
-            id: key,
-            title: item.title || item.name || "Untitled Tournament",
-            game: item.game || "Esports",
-            prizePool: item.prizePool || item.totalPrizePool || 0,
-            maxSlots: item.maxSlots || item.maxParticipants || item.maxTeams || 16,
-            filledSlots: item.filledSlots || item.currentParticipants || (isReg ? 1 : 0),
-            isRegistered: isReg,
-            status: item.status || "published"
-          });
-        }
+      [...list, ...localTournaments, ...myTournaments].forEach((item) => {
+        const key = String(item._id || item.id || item.title || item.name);
+
+        if (!key) return;
+
+        const isRegistered =
+          allRegisteredIds.includes(key) ||
+          item.isRegistered ||
+          item.status === "registered" ||
+          false;
+
+        combinedMap.set(key, {
+          ...item,
+          _id: key,
+          id: key,
+          title: item.title || item.name || "Untitled Tournament",
+          game: item.game || "Esports",
+          prizePool: item.prizePool || item.totalPrizePool || 0,
+          maxSlots:
+            item.maxSlots || item.maxParticipants || item.maxTeams || 16,
+          filledSlots:
+            item.filledSlots ||
+            item.currentParticipants ||
+            (isRegistered ? 1 : 0),
+          isRegistered,
+          status: item.status || "published",
+        });
       });
 
       setTournaments(Array.from(combinedMap.values()));
-    } catch (err) {
-      console.error("Failed to process tournaments list:", err);
+    } catch (error) {
+      console.error("Failed to process tournaments list:", error);
+
       toast.error("Failed to load tournaments list");
       setTournaments([]);
     } finally {
@@ -101,28 +140,54 @@ export const ParticipantTournaments = () => {
     setIsModalOpen(true);
   };
 
+  // Filter tournaments
   const filteredTournaments = tournaments.filter((item) => {
+    const status = item.status?.toLowerCase();
+
     const matchesSearch =
       item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.game?.toLowerCase().includes(searchQuery.toLowerCase());
 
     if (!matchesSearch) return false;
 
-    if (filter === "registered") return item.isRegistered;
-    if (filter === "live") return item.status?.toLowerCase() === "live";
-    if (filter === "upcoming")
-      return item.status?.toLowerCase() === "upcoming" || item.status?.toLowerCase() === "published";
+    // Hide completed tournaments
+    if (status === "completed") return false;
 
+    const tournamentId = (item._id || item.id)?.toString();
+    const isRegistered =
+      item.isRegistered || registeredTournamentIds.has(tournamentId);
+
+    // My registrations
+    if (filter === "registered") {
+      return isRegistered;
+    }
+
+    // Live tournaments
+    if (filter === "live") {
+      return status === "live" || status === "ongoing";
+    }
+
+    // Upcoming and published tournaments
+    if (filter === "upcoming") {
+      return status === "upcoming" || status === "published";
+    }
+
+    // All other non-completed tournaments
     return true;
   });
 
   return (
     <div className="w-full space-y-6">
+      {/* Header and Search */}
       <div className="theme-card border theme-border p-6 rounded-2xl shadow-xs w-full flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-extrabold theme-text">Esports Arena Tournaments</h1>
+          <h1 className="text-xl font-extrabold theme-text">
+            Esports Arena Tournaments
+          </h1>
+
           <p className="text-xs theme-subtext mt-1">
-            Browse available tournaments, register your squad, and compete for prize pools.
+            Browse available tournaments, register your squad, and compete for
+            prize pools.
           </p>
         </div>
 
@@ -134,10 +199,14 @@ export const ParticipantTournaments = () => {
             placeholder="Search game or event..."
             className="w-full theme-card border theme-border rounded-xl px-3.5 py-2 text-xs theme-text focus:outline-none focus:border-indigo-500 pl-9"
           />
-          <span className="absolute left-3 top-2.5 text-xs theme-subtext">🔍</span>
+
+          <span className="absolute left-3 top-2.5 text-xs theme-subtext">
+            🔍
+          </span>
         </div>
       </div>
 
+      {/* Filter Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
         {[
           { id: "all", label: "All Tournaments" },
@@ -159,96 +228,139 @@ export const ParticipantTournaments = () => {
         ))}
       </div>
 
+      {/* Loading State */}
       {loading ? (
         <div className="p-12 text-center text-xs theme-subtext theme-card border theme-border rounded-2xl">
           Fetching available tournaments...
         </div>
       ) : filteredTournaments.length === 0 ? (
+        /* Empty State */
         <div className="p-12 text-center text-xs theme-subtext theme-card border theme-border rounded-2xl">
           No tournaments found matching your criteria.
         </div>
       ) : (
+        /* Tournament Cards */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
-          {filteredTournaments.map((t) => (
-            <div
-              key={t._id || t.id}
-              className="theme-card border theme-border rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-xs hover:border-indigo-500/50 transition"
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold bg-indigo-600/10 text-indigo-500 border border-indigo-500/20 px-2.5 py-0.5 rounded-md uppercase">
-                    {t.game}
-                  </span>
-                  <span
-                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-md capitalize ${
-                      t.status === "live"
-                        ? "bg-red-500/10 text-red-500 border border-red-500/20"
-                        : "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
-                    }`}
+          {filteredTournaments.map((tournament) => {
+            const status = tournament.status?.toLowerCase();
+            const tournamentId = (tournament._id || tournament.id)?.toString();
+            const isRegistered =
+              tournament.isRegistered ||
+              registeredTournamentIds.has(tournamentId);
+
+            return (
+              <div
+                key={tournament._id || tournament.id}
+                className="theme-card border theme-border rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-xs hover:border-indigo-500/50 transition"
+              >
+                <div className="space-y-3">
+                  {/* Game and Status */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold bg-indigo-600/10 text-indigo-500 border border-indigo-500/20 px-2.5 py-0.5 rounded-md uppercase">
+                      {tournament.game}
+                    </span>
+
+                    <span
+                      className={`text-[10px] font-bold px-2.5 py-0.5 rounded-md capitalize ${
+                        status === "live" || status === "ongoing"
+                          ? "bg-red-500/10 text-red-500 border border-red-500/20"
+                          : "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+                      }`}
+                    >
+                      {tournament.status}
+                    </span>
+                  </div>
+
+                  {/* Tournament Information */}
+                  <div>
+                    <h3 className="text-sm font-bold theme-text line-clamp-1">
+                      {tournament.title}
+                    </h3>
+
+                    <p className="text-[11px] theme-subtext mt-1">
+                      Organizer:{" "}
+                      <span className="theme-text font-medium">
+                        {tournament.organizerName || "Official Arena"}
+                      </span>
+                    </p>
+                  </div>
+
+                  {/* Tournament Details */}
+                  <div className="grid grid-cols-2 gap-2 theme-icon-box border theme-border p-3 rounded-xl text-xs">
+                    <div>
+                      <p className="text-[10px] theme-subtext font-medium">
+                        Prize Pool
+                      </p>
+
+                      <p className="font-bold text-emerald-500 mt-0.5">
+                        ₹
+                        {(Number(tournament.prizePool) || 0).toLocaleString(
+                          "en-IN",
+                        )}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] theme-subtext font-medium">
+                        Entry Fee
+                      </p>
+
+                      <p className="font-bold theme-text mt-0.5">
+                        {tournament.entryFee
+                          ? `₹${tournament.entryFee}`
+                          : "Free"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] theme-subtext font-medium">
+                        Date & Time
+                      </p>
+
+                      <p className="font-bold theme-text mt-0.5 text-[11px]">
+                        {tournament.startDate
+                          ? new Date(tournament.startDate).toLocaleDateString(
+                              "en-IN",
+                            )
+                          : "TBA"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] theme-subtext font-medium">
+                        Slots Filled
+                      </p>
+
+                      <p className="font-bold theme-text mt-0.5 text-[11px]">
+                        {tournament.filledSlots} / {tournament.maxSlots}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Registration Button */}
+                {isRegistered ? (
+                  <div className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-3 font-semibold text-emerald-500">
+                    <CheckCircle2 className="h-5 w-5" />
+                    Already Registered
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => handleOpenRegisterModal(tournament)}
+                    className="w-full rounded-xl bg-indigo-600 px-5 py-3 font-semibold text-white transition hover:bg-indigo-500"
                   >
-                    {t.status}
-                  </span>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-bold theme-text line-clamp-1">{t.title}</h3>
-                  <p className="text-[11px] theme-subtext mt-1">
-                    Organizer: <span className="theme-text font-medium">{t.organizerName || "Official Arena"}</span>
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 theme-icon-box border theme-border p-3 rounded-xl text-xs">
-                  <div>
-                    <p className="text-[10px] theme-subtext font-medium">Prize Pool</p>
-                    <p className="font-bold text-emerald-500 mt-0.5">
-                      ₹{(Number(t.prizePool) || 0).toLocaleString("en-IN")}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] theme-subtext font-medium">Entry Fee</p>
-                    <p className="font-bold theme-text mt-0.5">
-                      {t.entryFee ? `₹${t.entryFee}` : "Free"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] theme-subtext font-medium">Date & Time</p>
-                    <p className="font-bold theme-text mt-0.5 text-[11px]">
-                      {t.startDate ? new Date(t.startDate).toLocaleDateString("en-IN") : "TBA"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] theme-subtext font-medium">Slots Filled</p>
-                    <p className="font-bold theme-text mt-0.5 text-[11px]">
-                      {t.filledSlots} / {t.maxSlots}
-                    </p>
-                  </div>
-                </div>
+                    Register Now
+                  </button>
+                )}
               </div>
-
-              {t.isRegistered ? (
-                <button
-                  disabled
-                  className="w-full py-2.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-xs font-bold rounded-xl cursor-default text-center"
-                >
-                  ✓ Registered
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => handleOpenRegisterModal(t)}
-                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition shadow-sm text-center cursor-pointer"
-                >
-                  Register Now ➔
-                </button>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {/* FORM REGISTRATION MODAL */}
+      {/* Registration Modal */}
       {selectedTournament && (
-        <RegisterModal
+        <ParticipantRegistrationModal
           tournament={selectedTournament}
           isOpen={isModalOpen}
           onClose={() => {
@@ -259,6 +371,7 @@ export const ParticipantTournaments = () => {
             setIsModalOpen(false);
             setSelectedTournament(null);
             fetchTournaments();
+            fetchMyRegistrations();
           }}
         />
       )}

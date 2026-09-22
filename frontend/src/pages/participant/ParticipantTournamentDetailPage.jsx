@@ -10,7 +10,7 @@ import {
   CheckCircle,
   Calendar,
   Shield,
-  Gamepad2
+  Gamepad2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -30,21 +30,25 @@ export function ParticipantTournamentDetailPage() {
   const fetchDetail = useCallback(() => {
     try {
       // Fetch tournaments from local storage or context mock data
-      const local1 = JSON.parse(localStorage.getItem("nexus_tournaments") || "[]");
+      const local1 = JSON.parse(
+        localStorage.getItem("nexus_tournaments") || "[]",
+      );
       const local2 = JSON.parse(localStorage.getItem("my_tournaments") || "[]");
       const allTournaments = [...local1, ...local2];
 
       const found = allTournaments.find(
-        (t) => String(t._id || t.id) === String(id)
+        (t) => String(t._id || t.id) === String(id),
       );
 
       if (found) {
         setTournament(found);
 
         // Check if current user is already registered for this tournament
-        const myRegs = JSON.parse(localStorage.getItem("my_registrations") || "[]");
+        const myRegs = JSON.parse(
+          localStorage.getItem("my_registrations") || "[]",
+        );
         const registered = myRegs.some(
-          (r) => String(r.tournamentId) === String(id)
+          (r) => String(r.tournamentId) === String(id),
         );
         setIsAlreadyRegistered(registered);
       } else {
@@ -58,6 +62,37 @@ export function ParticipantTournamentDetailPage() {
     }
   }, [id]);
 
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [checkingRegistration, setCheckingRegistration] = useState(true);
+
+  useEffect(() => {
+    const checkRegistration = async () => {
+      try {
+        const tournamentId = tournament?._id || tournament?.id;
+
+        if (!tournamentId) return;
+
+        await participantService.getMyRegistration(tournamentId);
+
+        setIsRegistered(true);
+      } catch (error) {
+        const status = error?.response?.status;
+
+        if (status === 404) {
+          setIsRegistered(false);
+        } else {
+          console.error("Failed to check registration status:", error);
+        }
+      } finally {
+        setCheckingRegistration(false);
+      }
+    };
+
+    if (tournament) {
+      checkRegistration();
+    }
+  }, [tournament]);
+
   useEffect(() => {
     fetchDetail();
   }, [fetchDetail]);
@@ -67,7 +102,9 @@ export function ParticipantTournamentDetailPage() {
       <div className="flex items-center justify-center min-h-[400px] text-zinc-400">
         <div className="flex items-center gap-3">
           <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-sm font-medium">Loading Tournament Details...</span>
+          <span className="text-sm font-medium">
+            Loading Tournament Details...
+          </span>
         </div>
       </div>
     );
@@ -91,8 +128,12 @@ export function ParticipantTournamentDetailPage() {
   }
 
   const teamSize = Number(tournament.teamSize) || 1;
-  const entryFee = Number(tournament.entryFee || tournament.registrationFee || 0);
-  const prizePool = Number(tournament.totalPrizePool || tournament.prizePool || 0);
+  const entryFee = Number(
+    tournament.entryFee || tournament.registrationFee || 0,
+  );
+  const prizePool = Number(
+    tournament.totalPrizePool || tournament.prizePool || 0,
+  );
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-12 text-white">
@@ -121,7 +162,8 @@ export function ParticipantTournamentDetailPage() {
               {tournament.title || tournament.name || "Untitled Tournament"}
             </h1>
             <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-              {tournament.description || "Official tournament hosted on Nexus Play. Join with your team and compete for top positions."}
+              {tournament.description ||
+                "Official tournament hosted on Nexus Play. Join with your team and compete for top positions."}
             </p>
           </div>
 
@@ -191,13 +233,16 @@ export function ParticipantTournamentDetailPage() {
           </h3>
           <div className="space-y-3 text-xs text-zinc-300 leading-relaxed">
             <p>
-              1. All team members must enter their verified Game UIDs and In-Game Names (IGNs).
+              1. All team members must enter their verified Game UIDs and
+              In-Game Names (IGNs).
             </p>
             <p>
-              2. Room credentials will be provided 15 minutes prior to the start time in your dashboard.
+              2. Room credentials will be provided 15 minutes prior to the start
+              time in your dashboard.
             </p>
             <p>
-              3. Emulators, hacks, or third-party tools are strictly prohibited and will result in an immediate ban.
+              3. Emulators, hacks, or third-party tools are strictly prohibited
+              and will result in an immediate ban.
             </p>
           </div>
         </div>
@@ -207,9 +252,18 @@ export function ParticipantTournamentDetailPage() {
             <Shield className="w-4 h-4" /> Organizer Support
           </h3>
           <div className="text-xs space-y-2 text-zinc-400">
-            <p><strong className="text-white">Organizer:</strong> {tournament.organizer || "Official Arena"}</p>
-            <p><strong className="text-white">Date:</strong> {tournament.date || "TBA"}</p>
-            <p><strong className="text-white">Fair Play:</strong> Guaranteed Anti-Cheat Protocol</p>
+            <p>
+              <strong className="text-white">Organizer:</strong>{" "}
+              {tournament.organizer || "Official Arena"}
+            </p>
+            <p>
+              <strong className="text-white">Date:</strong>{" "}
+              {tournament.date || "TBA"}
+            </p>
+            <p>
+              <strong className="text-white">Fair Play:</strong> Guaranteed
+              Anti-Cheat Protocol
+            </p>
           </div>
         </div>
       </div>
