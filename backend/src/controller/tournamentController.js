@@ -4,7 +4,6 @@ import ErrorHandler from "../utils/ErrorHandler.js";
 import APIFeatures from "../utils/apiFeatures.js";
 import Organizer from "../models/organizer.js";
 
-
 // Create tournament
 // POST /api/v1/tournaments
 
@@ -123,7 +122,7 @@ export const getAllTournaments = catchAsyncErrors(
         const totalTournaments =
             await apiFilters.query.clone().countDocuments();
 
-        apiFilters.pagination(resPerPage);
+        // apiFilters.pagination(resPerPage);
 
         const tournaments = await apiFilters.query;
 
@@ -137,8 +136,8 @@ export const getAllTournaments = catchAsyncErrors(
             success: true,
             count: tournaments.length,
             totalTournaments,
-            currentPage,
-            totalPages,
+            // currentPage,
+            // totalPages,
             tournaments,
         });
     }

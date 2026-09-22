@@ -21,5 +21,15 @@ export const tournamentService = {
   create: async (data) => {
     const res = await api.post('/tournaments', data);
     return res.data;
-  }
+  },
+
+  getRegisteredTeams: async (tournamentId) => {
+    const response = await api.get(
+      `/tournaments/${tournamentId}/registrations`
+    );
+
+    return response.data;
+  },
+
+
 };
