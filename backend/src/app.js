@@ -8,8 +8,7 @@ import organizerRoutes from './routes/organizerRoutes.js'
 import cors from 'cors'
 import registrationRoutes from "./routes/registrationRoutes.js";
 import superAdminRoutes from "./routes/superAdminRoutes.js";
-
-
+import participantRoutes from "./routes/participantRoutes.js";
 import sponsorRoutes from './routes/sponsorRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 
@@ -35,6 +34,7 @@ app.use("/api/v1/sponsors", sponsorRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1", registrationRoutes);
 app.use("/api/v1/superadmin", superAdminRoutes);
+app.use("/api/v1/participant", participantRoutes);
 
 
 

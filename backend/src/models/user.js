@@ -18,6 +18,12 @@ const userSchema = new mongoose.Schema(
             trim: true,
         },
 
+        mobileNumber: {
+            type: String,
+            trim: true,
+            default: null,
+        },
+
         password: {
             type: String,
             required: [true, "Please enter your password"],
@@ -35,6 +41,26 @@ const userSchema = new mongoose.Schema(
                 default: null,
             },
         },
+
+        college: {
+            type: String,
+            trim: true,
+            default: null,
+        },
+
+        collegeId: {
+            type: String,
+            trim: true,
+            default: null,
+        },
+
+        upiId: {
+            type: String,
+            trim: true,
+            lowercase: true,
+            default: null,
+        },
+
 
         role: {
             type: String,

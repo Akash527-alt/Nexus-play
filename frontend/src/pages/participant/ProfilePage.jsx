@@ -1,208 +1,350 @@
-import React, { useEffect, useState } from "react";
-import { toast } from "sonner";
-import { authService } from "../../services/authService";
+import { useEffect, useState } from "react";
+import { Mail, User, GraduationCap, Phone, Edit3, Save, X } from "lucide-react";
+import { participantService } from "../../services/participantService.js";
 
 export const ParticipantProfilePage = () => {
-  const [profile, setProfile] = useState({
-    name: "",
-    gamerTag: "",
-    email: "",
+  const [profile, setProfile] = useState(null);
+
+  const [formData, setFormData] = useState({
+    mobileNumber: "",
     college: "",
-    upiId: "",
-    games: [],
-    xp: 0,
-    played: 0,
-    winRate: "0%",
-    totalEarnings: 0,
+    collegeId: "",
   });
 
-  const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ ...profile, gamesInput: "" });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
+  // Fetch participant profile
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const data = await authService.getCurrentUser();
-      const user = data?.user || data || {};
-      
-      const loadedProfile = {
-        name: user.fullName || user.name || "",
-        gamerTag: user.gamerTag || "#NEXUS_PLAYER",
-        email: user.email || "",
-        college: user.college || "N/A",
-        upiId: user.upiId || "",
-        games: user.games || [],
-        xp: user.xp || 0,
-        played: user.stats?.played || 0,
-        winRate: user.stats?.winRate ? `${user.stats.winRate}%` : "0%",
-        totalEarnings: user.stats?.earnings || 0,
-      };
+      setError("");
 
-      setProfile(loadedProfile);
-      setFormData({ ...loadedProfile, gamesInput: loadedProfile.games.join(", ") });
+      const response = await participantService.getProfile();
+
+      const user = response.user;
+
+      setProfile(user);
+
+      setFormData({
+        mobileNumber: user.mobileNumber || "",
+        college: user.college || "",
+        collegeId: user.collegeId || "",
+      });
     } catch (err) {
-      console.error("Failed to load profile:", err);
+      setError(err?.response?.data?.message || "Failed to load profile");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSave = async (e) => {
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleEdit = () => {
+    setError("");
+    setSuccess("");
+    setIsEditing(true);
+  };
+
+  const handleCancel = () => {
+    setFormData({
+      mobileNumber: profile?.mobileNumber || "",
+      college: profile?.college || "",
+      collegeId: profile?.collegeId || "",
+    });
+
+    setError("");
+    setSuccess("");
+    setIsEditing(false);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const gamesArr = formData.gamesInput.split(",").map((g) => g.trim()).filter(Boolean);
-    const updated = {
-      ...formData,
-      games: gamesArr,
-    };
 
     try {
-      await authService.updateProfile(updated);
-      setProfile(updated);
+      setSaving(true);
+      setError("");
+      setSuccess("");
+
+      const response = await participantService.updateProfile(formData);
+
+      setProfile(response.user);
+
+      setFormData({
+        mobileNumber: response.user.mobileNumber || "",
+        college: response.user.college || "",
+        collegeId: response.user.collegeId || "",
+      });
+
+      setSuccess("Profile updated successfully.");
       setIsEditing(false);
-      toast.success("Profile updated successfully!");
     } catch (err) {
-      toast.error("Failed to update profile");
+      setError(err?.response?.data?.message || "Failed to update profile");
+    } finally {
+      setSaving(false);
     }
   };
 
   if (loading) {
-    return <div className="p-8 text-center text-xs theme-subtext">Loading player profile...</div>;
+    return (
+      <div className="min-h-[calc(100vh-2rem)] flex items-center justify-center">
+        <p className="theme-subtext">Loading profile...</p>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="p-4 sm:p-6">
+        <div className="theme-card rounded-2xl p-6">
+          <p className="text-red-500">{error || "Unable to load profile."}</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6">
-      {/* Top Banner Box */}
-      <div className="theme-card border theme-border p-6 rounded-2xl flex flex-col md:flex-row items-center gap-6 shadow-xs w-full">
-        <div className="h-20 w-20 bg-indigo-600 border-2 border-indigo-400 rounded-full flex items-center justify-center text-2xl font-black text-white shadow-md shrink-0">
-          {profile.name ? profile.name.split(" ").map(n => n[0]).join("") : "P"}
-        </div>
-        <div className="text-center md:text-left flex-1">
-          <h2 className="text-xl font-extrabold theme-text">{profile.name || "Player"}</h2>
-          <p className="text-xs theme-subtext mt-0.5">
-            Gamer Tag: <span className="text-indigo-500 font-semibold">{profile.gamerTag}</span> • Verified Student Player
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="theme-text text-2xl sm:text-3xl font-bold">
+            My Profile
+          </h1>
+
+          <p className="theme-subtext mt-1">
+            Manage your participant information
           </p>
-          <div className="flex flex-wrap gap-2 mt-3 justify-center md:justify-start">
-            {profile.games.map((game, i) => (
-              <span key={i} className="text-[10px] theme-icon-box theme-text px-2.5 py-1 rounded-md border theme-border font-medium">
-                {game}
-              </span>
-            ))}
-            <span className="text-[10px] bg-indigo-500/10 text-indigo-500 px-2.5 py-1 rounded-md border border-indigo-500/20 font-bold">
-              {profile.xp} XP
-            </span>
-          </div>
         </div>
-        <button 
-          onClick={() => {
-            setFormData({ ...profile, gamesInput: profile.games.join(", ") });
-            setIsEditing(true);
-          }} 
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition shadow-sm whitespace-nowrap">
-          Edit Profile
-        </button>
-      </div>
 
-      {/* Info Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-        <div className="theme-card border theme-border p-5 rounded-2xl space-y-3 shadow-xs">
-          <h3 className="text-sm font-bold theme-text border-b theme-border pb-2">Personal Info</h3>
-          <div className="text-xs theme-subtext space-y-2">
-            <p><strong className="theme-text">Email:</strong> {profile.email || "N/A"}</p>
-            <p><strong className="theme-text">College:</strong> {profile.college || "N/A"}</p>
-            <p><strong className="theme-text">Default UPI:</strong> {profile.upiId || "Not set"}</p>
-          </div>
-        </div>
-        
-        <div className="theme-card border theme-border p-5 rounded-2xl space-y-3 shadow-xs">
-          <h3 className="text-sm font-bold theme-text border-b theme-border pb-2">Tournament Overview</h3>
-          <div className="text-xs theme-subtext space-y-2">
-            <p><strong className="theme-text">Played:</strong> {profile.played} Events</p>
-            <p><strong className="theme-text">Win Rate:</strong> {profile.winRate}</p>
-            <p><strong className="theme-text">Total Earnings:</strong> ₹{(profile.totalEarnings).toLocaleString("en-IN")}</p>
-          </div>
-        </div>
-      </div>
+        {/* Profile Card */}
+        <div className="theme-card rounded-2xl border theme-border overflow-hidden">
+          {/* Profile Header */}
+          <div className="p-5 sm:p-6 border-b theme-border">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-4">
+                {/* Avatar */}
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-purple-600 flex items-center justify-center text-white text-xl sm:text-2xl font-bold shrink-0">
+                  {profile.name?.charAt(0)?.toUpperCase() || "U"}
+                </div>
 
-      {/* Dynamic Edit Profile Modal */}
-      {isEditing && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="theme-card border theme-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex justify-between items-center border-b theme-border pb-3">
-              <h3 className="text-base font-bold theme-text">Edit Player Profile</h3>
-              <button onClick={() => setIsEditing(false)} className="theme-subtext text-sm hover:theme-text">✕</button>
+                <div className="min-w-0">
+                  <h2 className="theme-text text-xl font-semibold truncate">
+                    {profile.name}
+                  </h2>
+
+                  <p className="theme-subtext flex items-center gap-2 mt-1 text-sm">
+                    <Mail size={15} />
+                    <span className="truncate">{profile.email}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Edit Button */}
+              {!isEditing && (
+                <button
+                  type="button"
+                  onClick={handleEdit}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition w-full sm:w-auto"
+                >
+                  <Edit3 size={17} />
+                  Edit Profile
+                </button>
+              )}
             </div>
-            
-            <form onSubmit={handleSave} className="space-y-3 text-xs">
+          </div>
+
+          {/* Messages */}
+          {(error || success) && (
+            <div className="px-5 sm:px-6 pt-5">
+              {error && (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 text-red-500 px-4 py-3 text-sm">
+                  {error}
+                </div>
+              )}
+
+              {success && (
+                <div className="rounded-lg border border-green-500/30 bg-green-500/10 text-green-500 px-4 py-3 text-sm">
+                  {success}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="p-5 sm:p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Full Name */}
               <div>
-                <label className="block font-bold theme-text mb-1">Full Name</label>
-                <input 
-                  type="text" 
-                  value={formData.name} 
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full theme-input border rounded-xl p-2.5 focus:outline-none focus:border-indigo-500"
-                  required
-                />
+                <label className="theme-text text-sm font-medium block mb-2">
+                  Full Name
+                </label>
+
+                <div className="relative">
+                  <User
+                    size={18}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 theme-subtext"
+                  />
+
+                  <input
+                    type="text"
+                    value={profile.name || ""}
+                    disabled
+                    className="theme-input w-full pl-10 pr-4 py-3 rounded-lg opacity-70 cursor-not-allowed"
+                  />
+                </div>
+
+                <p className="theme-subtext text-xs mt-1.5">
+                  Your account name cannot be changed here.
+                </p>
               </div>
 
+              {/* Email */}
               <div>
-                <label className="block font-bold theme-text mb-1">Gamer Tag</label>
-                <input 
-                  type="text" 
-                  value={formData.gamerTag} 
-                  onChange={(e) => setFormData({ ...formData, gamerTag: e.target.value })}
-                  className="w-full theme-input border rounded-xl p-2.5 focus:outline-none focus:border-indigo-500"
-                  required
-                />
+                <label className="theme-text text-sm font-medium block mb-2">
+                  Email
+                </label>
+
+                <div className="relative">
+                  <Mail
+                    size={18}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 theme-subtext"
+                  />
+
+                  <input
+                    type="email"
+                    value={profile.email || ""}
+                    disabled
+                    className="theme-input w-full pl-10 pr-4 py-3 rounded-lg opacity-70 cursor-not-allowed"
+                  />
+                </div>
+
+                <p className="theme-subtext text-xs mt-1.5">
+                  Your registered email address.
+                </p>
               </div>
 
+              {/* Mobile Number */}
               <div>
-                <label className="block font-bold theme-text mb-1">College / Institute</label>
-                <input 
-                  type="text" 
-                  value={formData.college} 
-                  onChange={(e) => setFormData({ ...formData, college: e.target.value })}
-                  className="w-full theme-input border rounded-xl p-2.5 focus:outline-none focus:border-indigo-500"
-                />
+                <label className="theme-text text-sm font-medium block mb-2">
+                  Mobile Number
+                </label>
+
+                <div className="relative">
+                  <Phone
+                    size={18}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 theme-subtext"
+                  />
+
+                  <input
+                    type="tel"
+                    name="mobileNumber"
+                    value={formData.mobileNumber}
+                    onChange={handleChange}
+                    disabled={!isEditing}
+                    placeholder="Enter your mobile number"
+                    maxLength="10"
+                    className="theme-input w-full pl-10 pr-4 py-3 rounded-lg disabled:opacity-70 disabled:cursor-not-allowed"
+                  />
+                </div>
+
+                <p className="theme-subtext text-xs mt-1.5">
+                  This number can be used for tournament communication.
+                </p>
               </div>
 
+              {/* College */}
               <div>
-                <label className="block font-bold theme-text mb-1">Default UPI ID</label>
-                <input 
-                  type="text" 
-                  value={formData.upiId} 
-                  onChange={(e) => setFormData({ ...formData, upiId: e.target.value })}
-                  className="w-full theme-input border rounded-xl p-2.5 focus:outline-none focus:border-indigo-500"
-                  placeholder="username@upi"
-                />
+                <label className="theme-text text-sm font-medium block mb-2">
+                  College
+                </label>
+
+                <div className="relative">
+                  <GraduationCap
+                    size={18}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 theme-subtext"
+                  />
+
+                  <input
+                    type="text"
+                    name="college"
+                    value={formData.college}
+                    onChange={handleChange}
+                    disabled={!isEditing}
+                    placeholder="Enter your college name"
+                    className="theme-input w-full pl-10 pr-4 py-3 rounded-lg disabled:opacity-70 disabled:cursor-not-allowed"
+                  />
+                </div>
               </div>
 
+              {/* College ID */}
               <div>
-                <label className="block font-bold theme-text mb-1">Primary Games (comma separated)</label>
-                <input 
-                  type="text" 
-                  value={formData.gamesInput} 
-                  onChange={(e) => setFormData({ ...formData, gamesInput: e.target.value })}
-                  className="w-full theme-input border rounded-xl p-2.5 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
+                <label className="theme-text text-sm font-medium block mb-2">
+                  College ID
+                </label>
 
-              <div className="flex justify-end gap-3 pt-3 border-t theme-border">
-                <button type="button" onClick={() => setIsEditing(false)} className="px-4 py-2 theme-border border rounded-xl theme-subtext theme-hover">
+                <div className="relative">
+                  <GraduationCap
+                    size={18}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 theme-subtext"
+                  />
+
+                  <input
+                    type="text"
+                    name="collegeId"
+                    value={formData.collegeId}
+                    onChange={handleChange}
+                    disabled={!isEditing}
+                    placeholder="Enter your college ID"
+                    className="theme-input w-full pl-10 pr-4 py-3 rounded-lg disabled:opacity-70 disabled:cursor-not-allowed"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Buttons */}
+            {isEditing && (
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-7 pt-5 border-t theme-border">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={saving}
+                  className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border theme-border theme-text hover:bg-black/5 dark:hover:bg-white/5 transition disabled:opacity-50"
+                >
+                  <X size={17} />
                   Cancel
                 </button>
-                <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition">
-                  Save Changes
+
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition disabled:opacity-50"
+                >
+                  <Save size={17} />
+                  {saving ? "Saving..." : "Save Changes"}
                 </button>
               </div>
-            </form>
-          </div>
+            )}
+          </form>
         </div>
-      )}
+      </div>
     </div>
   );
 };
+
+export default ParticipantProfilePage;

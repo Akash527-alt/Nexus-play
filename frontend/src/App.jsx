@@ -31,6 +31,7 @@ import { TournamentDetailPage } from "./pages/organizer/TournamentDetailPage";
 import { ProfilePage } from "./pages/organizer/ProfilePage";
 import { SettingsPage } from "./pages/organizer/SettingsPage";
 import { SponsorsPage } from "./pages/organizer/SponsorPage";
+import { RegisteredTeamsPage } from "./pages/organizer/RegisteredTeamPage.jsx";
 
 // Participant Pages
 import { ParticipantDashboard } from "./pages/participant/ParticipantDashboard";
@@ -162,6 +163,10 @@ function App() {
                           path="tournaments/:id"
                           element={<TournamentDetailPage />}
                         />
+                        <Route
+                          path="/tournaments/:id/participants"
+                          element={<RegisteredTeamsPage />}
+                        />
                         <Route path="history" element={<HistoryPage />} />
                         <Route path="sponsors" element={<SponsorsPage />} />
                         <Route path="profile" element={<ProfilePage />} />
@@ -185,7 +190,10 @@ function App() {
                   <ProtectedRoute roles={["sponsor", "superadmin", "admin"]}>
                     <SponsorLayout>
                       <Routes>
-                        <Route path="dashboard" element={<SponsorDashboard />} />
+                        <Route
+                          path="dashboard"
+                          element={<SponsorDashboard />}
+                        />
                         <Route
                           path="tournaments"
                           element={<SponsorTournaments />}
@@ -208,9 +216,7 @@ function App() {
                         />
                         <Route
                           path="*"
-                          element={
-                            <Navigate to="/sponsor/dashboard" replace />
-                          }
+                          element={<Navigate to="/sponsor/dashboard" replace />}
                         />
                       </Routes>
                     </SponsorLayout>
@@ -225,7 +231,10 @@ function App() {
                   <ProtectedRoute roles={["superadmin", "admin"]}>
                     <SuperAdminLayout>
                       <Routes>
-                        <Route path="dashboard" element={<SuperAdminDashboard />} />
+                        <Route
+                          path="dashboard"
+                          element={<SuperAdminDashboard />}
+                        />
                         <Route path="users" element={<UsersManagementPage />} />
                         <Route
                           path="organizers"
