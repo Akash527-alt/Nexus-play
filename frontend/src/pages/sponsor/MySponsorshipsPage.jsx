@@ -1,223 +1,322 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Handshake,
-  Calendar,
-  CheckCircle2,
   Clock,
-  ExternalLink,
-  Plus,
-  Mail,
-  ShieldCheck,
-  Search,
+  CheckCircle,
+  XCircle,
+  CreditCard,
+  Calendar,
+  Trophy,
+  RefreshCw,
 } from "lucide-react";
 import { sponsorService } from "../../services/sponsorService";
-import { SponsorTierBadge } from "../../components/sponsor/SponsorTierBadge";
+import { toast } from "sonner";
 
 export function MySponsorshipsPage() {
-  const navigate = useNavigate();
-
   const [sponsorships, setSponsorships] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
 
-  const loadData = async () => {
+  const [loading, setLoading] = useState(true);
+
+  // ============================================================
+  // LOAD
+  // ============================================================
+
+  const loadSponsorships = async () => {
     try {
       setLoading(true);
-      const deals = await sponsorService.getMySponsorships();
-      setSponsorships(deals);
-    } catch (err) {
-      console.error(err);
+
+      const response = await sponsorService.getMySponsorships();
+
+      setSponsorships(response?.data || []);
+    } catch (error) {
+      console.error("Failed to load sponsorships:", error);
+
+      toast.error(
+        error?.response?.data?.message || "Failed to load sponsorships.",
+      );
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    loadSponsorships();
   }, []);
 
-  const filteredDeals = sponsorships.filter((deal) => {
-    const matchesStatus = filterStatus === "all" || deal.status === filterStatus;
-    const matchesSearch =
-      deal.tournamentTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      deal.game.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (deal.organizerName && deal.organizerName.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesStatus && matchesSearch;
-  });
+  // ============================================================
+  // STATUS
+  // ============================================================
 
-  const getStatusBadge = (status) => {
+  const getStatusStyle = (status) => {
     switch (status) {
-      case "active":
-        return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
-      case "approved":
-        return "bg-cyan-500/15 text-cyan-400 border-cyan-500/30";
       case "pending":
-        return "bg-amber-500/15 text-amber-400 border-amber-500/30";
+        return "bg-amber-500/10 text-amber-400 border-amber-500/30";
+
+      case "approved":
+        return "bg-cyan-500/10 text-cyan-400 border-cyan-500/30";
+
+      case "active":
+        return "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+
+      case "rejected":
+        return "bg-rose-500/10 text-rose-400 border-rose-500/30";
+
       case "completed":
-        return "bg-slate-500/15 text-slate-400 border-slate-500/30";
+        return "bg-slate-500/10 text-slate-400 border-slate-500/30";
+
       default:
-        return "bg-gray-500/15 text-gray-400 border-gray-500/30";
+        return "bg-slate-500/10 text-slate-400 border-slate-500/30";
     }
   };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "pending":
+        return <Clock className="w-4 h-4" />;
+
+      case "approved":
+      case "active":
+        return <CheckCircle className="w-4 h-4" />;
+
+      case "rejected":
+        return <XCircle className="w-4 h-4" />;
+
+      default:
+        return <Handshake className="w-4 h-4" />;
+    }
+  };
+
+  // ============================================================
+  // RENDER
+  // ============================================================
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold theme-text">My Sponsorship Contracts</h1>
-          <p className="text-xs md:text-sm theme-subtext">
-            Track deliverables, approval status, and brand presence across all sponsored tournaments.
+          <h1 className="text-2xl font-bold theme-text">My Sponsorships</h1>
+
+          <p className="text-xs md:text-sm theme-subtext mt-1">
+            Track your sponsorship proposals, approvals, and payment status.
           </p>
         </div>
+
         <button
-          onClick={() => navigate("/sponsor/tournaments")}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/30 transition cursor-pointer"
+          onClick={loadSponsorships}
+          disabled={loading}
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl theme-card border theme-border theme-text text-xs font-semibold hover:bg-indigo-500/10 transition cursor-pointer disabled:opacity-50"
         >
-          <Plus className="w-4 h-4" />
-          <span>Sponsor New Tournament</span>
+          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          Refresh
         </button>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 theme-card p-4 rounded-2xl border theme-border">
-        <div className="relative w-full sm:w-72">
-          <Search className="w-4 h-4 theme-subtext absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search contracts by tournament..."
-            className="theme-input w-full pl-9 pr-4 py-2 text-xs rounded-xl border theme-border outline-none focus:ring-2 focus:ring-indigo-500/20"
-          />
-        </div>
-
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
-          {["all", "active", "approved", "pending", "completed"].map((st) => (
-            <button
-              key={st}
-              onClick={() => setFilterStatus(st)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold capitalize whitespace-nowrap transition cursor-pointer ${
-                filterStatus === st
-                  ? "bg-indigo-600 text-white shadow-xs"
-                  : "theme-icon-box border theme-border theme-subtext hover:theme-text"
-              }`}
-            >
-              {st}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* List / Cards of Sponsorship Deals */}
+      {/* Content */}
       {loading ? (
-        <div className="p-12 text-center text-xs theme-subtext">Loading sponsorships...</div>
-      ) : filteredDeals.length === 0 ? (
-        <div className="theme-card border theme-border rounded-2xl p-12 text-center space-y-3">
-          <Handshake className="w-10 h-10 theme-subtext mx-auto opacity-40" />
-          <h3 className="text-sm font-bold theme-text">No sponsorship deals found</h3>
-          <p className="text-xs theme-subtext max-w-sm mx-auto">
-            You don't have any deals matching this filter. Browse open tournaments to submit your first sponsorship!
+        <div className="theme-card border theme-border rounded-2xl p-12 text-center">
+          <p className="text-xs theme-subtext">Loading your sponsorships...</p>
+        </div>
+      ) : sponsorships.length === 0 ? (
+        <div className="theme-card border theme-border rounded-2xl p-12 text-center">
+          <Handshake className="w-12 h-12 theme-subtext mx-auto opacity-40" />
+
+          <h3 className="text-sm font-bold theme-text mt-4">
+            No sponsorships yet
+          </h3>
+
+          <p className="text-xs theme-subtext max-w-md mx-auto mt-1">
+            Once you submit a sponsorship proposal, it will appear here.
           </p>
-          <button
-            onClick={() => navigate("/sponsor/tournaments")}
-            className="mt-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl cursor-pointer"
-          >
-            Explore Tournaments
-          </button>
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredDeals.map((deal) => (
-            <div
-              key={deal.id}
-              className="theme-card border theme-border rounded-2xl p-5 md:p-6 transition-all hover:border-indigo-500/40 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-6"
-            >
-              {/* Left Column: Info */}
-              <div className="space-y-3 max-w-xl">
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <SponsorTierBadge tier={deal.tier} size="sm" />
-                  <span
-                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${getStatusBadge(
-                      deal.status
-                    )}`}
-                  >
-                    {deal.status}
-                  </span>
-                  <span className="text-xs theme-subtext font-semibold">
-                    Contract ID: {deal.id}
-                  </span>
-                </div>
+          {sponsorships.map((sponsorship) => {
+            const tournament = sponsorship.tournamentId;
 
-                <h3 className="text-base font-bold theme-text leading-snug">
-                  {deal.tournamentTitle}
-                </h3>
+            const tournamentTitle =
+              tournament?.title || sponsorship.tournamentTitle || "Tournament";
 
-                <div className="flex flex-wrap items-center gap-4 text-xs theme-subtext">
-                  <span>
-                    Game: <span className="font-semibold theme-text">{deal.game}</span>
-                  </span>
-                  <span>
-                    Host: <span className="font-semibold theme-text">{deal.organizerName}</span>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5" />
-                    <span>{deal.date}</span>
-                  </span>
-                </div>
+            const game = tournament?.game || sponsorship.game || "Esports";
 
-                {/* Deliverables */}
-                {deal.deliverables && (
-                  <div className="pt-2">
-                    <p className="text-[11px] font-bold uppercase tracking-wider theme-subtext mb-1.5">
-                      Agreed Deliverables:
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                      {deal.deliverables.map((deliv, idx) => (
-                        <div key={idx} className="flex items-center gap-1.5 text-xs theme-subtext">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                          <span className="truncate">{deliv}</span>
-                        </div>
-                      ))}
+            return (
+              <div
+                key={sponsorship._id}
+                className="theme-card border theme-border rounded-2xl p-5"
+              >
+                {/* Header */}
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border ${getStatusStyle(
+                          sponsorship.status,
+                        )}`}
+                      >
+                        {getStatusIcon(sponsorship.status)}
+
+                        {sponsorship.status}
+                      </span>
+
+                      <span className="text-[10px] theme-subtext">
+                        Payment:{" "}
+                        <span className="font-semibold theme-text">
+                          {sponsorship.paymentStatus || "not_required"}
+                        </span>
+                      </span>
                     </div>
+
+                    <h2 className="text-lg font-bold theme-text mt-3">
+                      {tournamentTitle}
+                    </h2>
+
+                    <p className="text-xs theme-subtext mt-1">{game}</p>
+                  </div>
+
+                  {/* Amount */}
+                  <div className="shrink-0">
+                    <p className="text-[10px] theme-subtext uppercase tracking-wider">
+                      Sponsorship Amount
+                    </p>
+
+                    <p className="text-xl font-black text-indigo-400 mt-1">
+                      ₹{Number(sponsorship.amount || 0).toLocaleString("en-IN")}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Information */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
+                  <div className="theme-icon-box border theme-border rounded-xl p-3">
+                    <p className="text-[10px] theme-subtext uppercase">
+                      Submitted
+                    </p>
+
+                    <p className="text-xs font-semibold theme-text mt-1 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 theme-subtext" />
+
+                      {sponsorship.createdAt
+                        ? new Date(sponsorship.createdAt).toLocaleDateString()
+                        : "—"}
+                    </p>
+                  </div>
+
+                  <div className="theme-icon-box border theme-border rounded-xl p-3">
+                    <p className="text-[10px] theme-subtext uppercase">
+                      Tournament
+                    </p>
+
+                    <p className="text-xs font-semibold theme-text mt-1 flex items-center gap-1.5">
+                      <Trophy className="w-3.5 h-3.5 theme-subtext" />
+
+                      {tournament?.startDate
+                        ? new Date(tournament.startDate).toLocaleDateString()
+                        : "TBA"}
+                    </p>
+                  </div>
+
+                  <div className="theme-icon-box border theme-border rounded-xl p-3">
+                    <p className="text-[10px] theme-subtext uppercase">
+                      Payment
+                    </p>
+
+                    <p className="text-xs font-semibold theme-text mt-1 flex items-center gap-1.5">
+                      <CreditCard className="w-3.5 h-3.5 theme-subtext" />
+
+                      {sponsorship.paymentStatus || "Not required"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Requirements */}
+                <div className="mt-4 theme-icon-box border theme-border rounded-xl p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wider theme-subtext">
+                    Sponsorship Requirements
+                  </p>
+
+                  <p className="text-xs theme-text mt-2 leading-relaxed">
+                    {sponsorship.requirements || "No requirements provided."}
+                  </p>
+                </div>
+
+                {/* Message */}
+                {sponsorship.message && (
+                  <div className="mt-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider theme-subtext">
+                      Message to Organizer
+                    </p>
+
+                    <p className="text-xs theme-subtext mt-1 leading-relaxed">
+                      {sponsorship.message}
+                    </p>
+                  </div>
+                )}
+
+                {/* Rejection */}
+                {sponsorship.status === "rejected" &&
+                  sponsorship.rejectionReason && (
+                    <div className="mt-4 border border-rose-500/20 bg-rose-500/5 rounded-xl p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-rose-400">
+                        Rejection Reason
+                      </p>
+
+                      <p className="text-xs theme-subtext mt-1">
+                        {sponsorship.rejectionReason}
+                      </p>
+                    </div>
+                  )}
+
+                {/* Approved / Payment */}
+                {sponsorship.status === "approved" &&
+                  sponsorship.paymentStatus === "pending" && (
+                    <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-cyan-500/20 bg-cyan-500/5 rounded-xl p-4">
+                      <div>
+                        <p className="text-xs font-bold theme-text">
+                          Sponsorship Approved
+                        </p>
+
+                        <p className="text-[11px] theme-subtext mt-1">
+                          Your proposal has been approved by the organizer.
+                          Payment can be completed here once the NexusPlay
+                          payment system is connected.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled
+                        className="px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold opacity-50 cursor-not-allowed"
+                      >
+                        Payment Coming Soon
+                      </button>
+                    </div>
+                  )}
+
+                {/* Paid */}
+                {sponsorship.paymentStatus === "paid" && (
+                  <div className="mt-4 flex items-center gap-2 text-xs text-emerald-400 font-semibold">
+                    <CheckCircle className="w-4 h-4" />
+                    Payment completed
+                    {sponsorship.paidAt
+                      ? ` on ${new Date(
+                          sponsorship.paidAt,
+                        ).toLocaleDateString()}`
+                      : ""}
+                  </div>
+                )}
+
+                {/* Transaction */}
+                {sponsorship.transactionId && (
+                  <div className="mt-3 text-[11px] theme-subtext">
+                    Transaction ID:{" "}
+                    <span className="font-semibold theme-text">
+                      {sponsorship.transactionId}
+                    </span>
                   </div>
                 )}
               </div>
-
-              {/* Right Column: Financials & Actions */}
-              <div className="shrink-0 flex flex-col sm:flex-row lg:flex-col items-start lg:items-end justify-between gap-4 border-t lg:border-t-0 pt-4 lg:pt-0 theme-border">
-                <div className="text-left lg:text-right">
-                  <p className="text-[10px] uppercase font-bold tracking-wider theme-subtext">
-                    Sponsorship Amount
-                  </p>
-                  <p className="text-2xl font-black text-indigo-400">
-                    ${Number(deal.amount).toLocaleString()}
-                  </p>
-                  <p className="text-[11px] text-emerald-500 font-semibold flex items-center gap-1 mt-0.5 justify-start lg:justify-end">
-                    <ShieldCheck className="w-3.5 h-3.5" /> Escrow Protected
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <a
-                    href={`mailto:${deal.organizerEmail || "support@nexusplay.gg"}`}
-                    className="p-2 rounded-xl theme-icon-box border theme-border theme-subtext hover:theme-text transition cursor-pointer"
-                    title="Contact Host"
-                  >
-                    <Mail className="w-4 h-4" />
-                  </a>
-                  <button
-                    onClick={() => navigate(`/sponsor/tournaments`)}
-                    className="px-3 py-1.5 rounded-xl border theme-border theme-hover text-xs font-semibold theme-text transition cursor-pointer"
-                  >
-                    View Stream
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

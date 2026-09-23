@@ -1,88 +1,48 @@
 import Sponsor from "../models/sponsor.js";
 import Sponsorship from "../models/sponsorship.js";
 import Tournament from "../models/tournament.js";
+import Organizer from "../models/organizer.js";
 import Payment from "../models/payment.js";
 import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
 import ErrorHandler from "../utils/ErrorHandler.js";
 
+// ============================================================
+// SPONSOR PROFILE
+// ============================================================
+
 // @route   GET /api/v1/sponsors/me
 // @desc    Get current logged in sponsor profile
-export const getMySponsorProfile = catchAsyncErrors(async (req, res, next) => {
-  let sponsor = await Sponsor.findOne({ userId: req.user._id });
+export const getMySponsorProfile = catchAsyncErrors(
+  async (req, res, next) => {
+    const sponsor = await Sponsor.findOne({
+      userId: req.user._id,
+    });
 
-  if (!sponsor) {
-    return next(new ErrorHandler("sponser not found",404));
+    if (!sponsor) {
+      return next(
+        new ErrorHandler("Sponsor not found", 404)
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      data: sponsor,
+    });
   }
+);
 
-  res.status(200).json({
-    success: true,
-    data: sponsor,
-  });
-});
 
 // @route   PUT /api/v1/sponsors/me
 // @desc    Create or update sponsor profile
-export const updateSponsorProfile = catchAsyncErrors(async (req, res, next) => {
-  const {
-    companyName,
-    brandName,
-    industry,
-    website,
-    contactEmail,
-    contactPhone,
-    budgetRange,
-    preferredGames,
-    preferredLocations,
-    description,
-    logoUrl,
-    representativeName,
-    aadhaarNumber,
-    panNumber,
-  } = req.body;
-  
-  if (
-    !companyName ||
-    !contactEmail ||
-    !aadhaarNumber ||
-    !panNumber
-  ) {
-    return next(
-      new ErrorHandler(
-        "Company name, email, address, Aadhaar and PAN are required",
-        400
-      )
-    );
-  }
+export const updateSponsorProfile = catchAsyncErrors(
+  async (req, res, next) => {
 
-  const aadhaarRegex = /^\d{12}$/;
-
-  if (!aadhaarRegex.test(aadhaarNumber)) {
-    return next(
-      new ErrorHandler(
-        "Aadhaar number must contain exactly 12 digits",
-        400
-      )
-    );
-  }
-
-  const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i;
-
-  if (!panRegex.test(panNumber)) {
-    return next(
-      new ErrorHandler("Please enter a valid PAN number", 400)
-    );
-  }
-
-  let sponsor = await Sponsor.findOne({ userId: req.user._id });
-
-  if (!sponsor) {
-    sponsor = await Sponsor.create({
-      userId: req.user._id,
-      companyName: companyName || req.user.name,
+    const {
+      companyName,
       brandName,
       industry,
       website,
-      contactEmail: contactEmail || req.user.email,
+      contactEmail,
       contactPhone,
       budgetRange,
       preferredGames,
@@ -91,170 +51,591 @@ export const updateSponsorProfile = catchAsyncErrors(async (req, res, next) => {
       logoUrl,
       representativeName,
       aadhaarNumber,
-      panNumber: panNumber.toUpperCase(),
-      status: "pending",
+      panNumber,
+    } = req.body;
+
+    if (
+      !companyName ||
+      !contactEmail ||
+      !aadhaarNumber ||
+      !panNumber
+    ) {
+      return next(
+        new ErrorHandler(
+          "Company name, email, Aadhaar and PAN are required",
+          400
+        )
+      );
+    }
+
+    const aadhaarRegex = /^\d{12}$/;
+
+    if (!aadhaarRegex.test(aadhaarNumber)) {
+      return next(
+        new ErrorHandler(
+          "Aadhaar number must contain exactly 12 digits",
+          400
+        )
+      );
+    }
+
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i;
+
+    if (!panRegex.test(panNumber)) {
+      return next(
+        new ErrorHandler(
+          "Please enter a valid PAN number",
+          400
+        )
+      );
+    }
+
+    let sponsor = await Sponsor.findOne({
+      userId: req.user._id,
     });
-  } else {
-    sponsor.companyName = companyName || sponsor.companyName;
-    if (brandName !== undefined) sponsor.brandName = brandName;
-    if (industry !== undefined) sponsor.industry = industry;
-    if (website !== undefined) sponsor.website = website;
-    if (contactEmail !== undefined) sponsor.contactEmail = contactEmail;
-    if (contactPhone !== undefined) sponsor.contactPhone = contactPhone;
-    if (budgetRange !== undefined) sponsor.budgetRange = budgetRange;
-    if (preferredGames !== undefined) sponsor.preferredGames = preferredGames;
-    if (preferredLocations !== undefined) sponsor.preferredLocations = preferredLocations;
-    if (description !== undefined) sponsor.description = description;
-    if (logoUrl !== undefined) sponsor.logoUrl = logoUrl;
-    if (representativeName !== undefined) {
-      sponsor.representativeName = representativeName;
+
+    if (!sponsor) {
+
+      sponsor = await Sponsor.create({
+        userId: req.user._id,
+        companyName,
+        brandName,
+        industry,
+        website,
+        contactEmail,
+        contactPhone,
+        budgetRange,
+        preferredGames,
+        preferredLocations,
+        description,
+        logoUrl,
+        representativeName,
+        aadhaarNumber,
+        panNumber: panNumber.toUpperCase(),
+        status: "pending",
+      });
+
+    } else {
+
+      sponsor.companyName = companyName || sponsor.companyName;
+
+      if (brandName !== undefined)
+        sponsor.brandName = brandName;
+
+      if (industry !== undefined)
+        sponsor.industry = industry;
+
+      if (website !== undefined)
+        sponsor.website = website;
+
+      if (contactEmail !== undefined)
+        sponsor.contactEmail = contactEmail;
+
+      if (contactPhone !== undefined)
+        sponsor.contactPhone = contactPhone;
+
+      if (budgetRange !== undefined)
+        sponsor.budgetRange = budgetRange;
+
+      if (preferredGames !== undefined)
+        sponsor.preferredGames = preferredGames;
+
+      if (preferredLocations !== undefined)
+        sponsor.preferredLocations = preferredLocations;
+
+      if (description !== undefined)
+        sponsor.description = description;
+
+      if (logoUrl !== undefined)
+        sponsor.logoUrl = logoUrl;
+
+      if (representativeName !== undefined)
+        sponsor.representativeName = representativeName;
+
+      if (aadhaarNumber !== undefined)
+        sponsor.aadhaarNumber = aadhaarNumber;
+
+      if (panNumber !== undefined)
+        sponsor.panNumber = panNumber.toUpperCase();
+
+      // Updating KYC/profile information
+      // requires verification again.
+      sponsor.status = "pending";
+
+      await sponsor.save();
     }
 
-    if (aadhaarNumber !== undefined) {
-      sponsor.aadhaarNumber = aadhaarNumber;
-    }
-
-    if (panNumber !== undefined) {
-      sponsor.panNumber = panNumber.toUpperCase();
-    }
-
-    sponsor.status = "pending";
-
-    await sponsor.save();
+    res.status(200).json({
+      success: true,
+      data: sponsor,
+    });
   }
+);
 
-  res.status(200).json({
-    success: true,
-    data: sponsor,
-  });
-});
 
-// @route   POST /api/v1/tournaments/:id/sponsors
-// @desc    Sponsor a tournament (submit proposal)
-export const sponsorTournament = catchAsyncErrors(async (req, res, next) => {
-  const tournamentId = req.params.id || req.body.tournamentId;
-  const tournament = await Tournament.findById(tournamentId);
+// ============================================================
+// SPONSORSHIP REQUEST
+// ============================================================
 
-  const {
-    tier = "Gold Partner",
-    amount,
-    deliverables = [],
-    message = "",
-  } = req.body;
+// @route   POST /api/v1/sponsors/tournaments/:id/sponsors
+// @desc    Submit sponsorship request
+export const sponsorTournament = catchAsyncErrors(
+  async (req, res, next) => {
 
-  if (!amount || Number(amount) <= 0) {
-    return next(new ErrorHandler("Please provide a valid sponsorship amount", 400));
+    const tournamentId = req.params.id;
+
+    // ----------------------------------------------------
+    // 1. Find tournament
+    // ----------------------------------------------------
+
+    const tournament = await Tournament.findById(tournamentId);
+
+    if (!tournament) {
+      return next(
+        new ErrorHandler("Tournament not found", 404)
+      );
+    }
+
+    // ----------------------------------------------------
+    // 2. Tournament must be published
+    // ----------------------------------------------------
+
+    if (tournament.status !== "published") {
+      return next(
+        new ErrorHandler(
+          "Sponsorship is available only for published tournaments",
+          400
+        )
+      );
+    }
+
+    // ----------------------------------------------------
+    // 3. Find sponsor profile
+    // ----------------------------------------------------
+
+    const sponsor = await Sponsor.findOne({
+      userId: req.user._id,
+    });
+
+    if (!sponsor) {
+      return next(
+        new ErrorHandler(
+          "Sponsor profile not found",
+          404
+        )
+      );
+    }
+
+    // ----------------------------------------------------
+    // 4. Only verified sponsors can sponsor
+    // ----------------------------------------------------
+
+    if (sponsor.status !== "verified") {
+      return next(
+        new ErrorHandler(
+          "Only verified sponsors can submit sponsorship requests",
+          403
+        )
+      );
+    }
+
+    // ----------------------------------------------------
+    // 5. Get request data
+    // ----------------------------------------------------
+
+    const {
+      amount,
+      requirements,
+      message = "",
+    } = req.body;
+
+    // ----------------------------------------------------
+    // 6. Validate amount
+    // ----------------------------------------------------
+
+    if (!amount || Number(amount) <= 0) {
+      return next(
+        new ErrorHandler(
+          "Please provide a valid sponsorship amount",
+          400
+        )
+      );
+    }
+
+    // ----------------------------------------------------
+    // 7. Validate requirements
+    // ----------------------------------------------------
+
+    if (
+      !requirements ||
+      requirements.trim().length === 0
+    ) {
+      return next(
+        new ErrorHandler(
+          "Please provide your sponsorship requirements",
+          400
+        )
+      );
+    }
+
+    // ----------------------------------------------------
+    // 8. Prevent duplicate active/pending request
+    // ----------------------------------------------------
+
+    const existingSponsorship = await Sponsorship.findOne({
+      tournamentId: tournament._id,
+      sponsorId: sponsor._id,
+      status: {
+        $in: [
+          "pending",
+          "approved",
+          "active",
+        ],
+      },
+    });
+
+    if (existingSponsorship) {
+      return next(
+        new ErrorHandler(
+          "You already have a sponsorship request for this tournament",
+          400
+        )
+      );
+    }
+
+    // ----------------------------------------------------
+    // 9. Create sponsorship request
+    // ----------------------------------------------------
+
+    const sponsorship = await Sponsorship.create({
+      tournamentId: tournament._id,
+      sponsorId: sponsor._id,
+      sponsorUserId: req.user._id,
+
+      tournamentTitle: tournament.title,
+      game: tournament.game,
+
+      amount: Number(amount),
+
+      requirements: requirements.trim(),
+
+      message: message
+        ? message.trim()
+        : "",
+
+      status: "pending",
+
+      // Payment is NOT required yet.
+      // It will become pending after organizer approval.
+      paymentStatus: "not_required",
+    });
+
+    res.status(201).json({
+      success: true,
+      message:
+        "Sponsorship request submitted successfully",
+      data: sponsorship,
+    });
   }
+);
 
-  const sponsor = await Sponsor.findOne({ userId: req.user._id });
 
-  const sponsorship = await Sponsorship.create({
-    tournamentId: tournament?._id || tournamentId,
-    sponsorId: sponsor?._id,
-    sponsorUserId: req.user._id,
-    tournamentTitle: tournament?.title || req.body.tournamentTitle || "Championship Event",
-    game: tournament?.game || req.body.game || "Esports",
-    tier,
-    amount: Number(amount),
-    status: "pending",
-    organizerName: tournament?.organizer?.name || req.body.organizerName || "Tournament Host",
-    organizerEmail: tournament?.organizer?.email || req.body.organizerEmail || "",
-    deliverables,
-    message,
-  });
-
-  // Record payment in escrow ledger
-  await Payment.create({
-    transactionId: `TXN_${Date.now()}`,
-    userId: req.user._id,
-    tournamentId: tournament?._id || tournamentId,
-    type: "Sponsorship Deposit",
-    entity: sponsor?.companyName || req.user.name,
-    tournament: tournament?.title || "Championship Event",
-    amount: Number(amount),
-    method: "Escrow Transfer",
-    status: "pending",
-  }).catch(() => null);
-
-  res.status(201).json({
-    success: true,
-    message: "Sponsorship proposal submitted successfully",
-    data: sponsorship,
-  });
-});
+// ============================================================
+// SPONSOR'S OWN SPONSORSHIPS
+// ============================================================
 
 // @route   GET /api/v1/sponsors/sponsorships
-// @desc    Get all sponsorships submitted by logged-in sponsor
-export const getMySponsorships = catchAsyncErrors(async (req, res, next) => {
-  const sponsorships = await Sponsorship.find({
-    sponsorUserId: req.user._id,
-  }).sort({ createdAt: -1 });
+// @desc    Get all sponsorship requests of logged-in sponsor
+export const getMySponsorships = catchAsyncErrors(
+  async (req, res, next) => {
 
-  res.status(200).json({
-    success: true,
-    data: sponsorships,
-  });
-});
+    const sponsorships = await Sponsorship.find({
+      sponsorUserId: req.user._id,
+    })
+      .populate(
+        "tournamentId",
+        "title game tournamentType startDate endDate venue status"
+      )
+      .sort({
+        createdAt: -1,
+      });
 
-// @route   GET /api/v1/tournaments/:id/sponsors
-// @desc    Get all approved sponsors for a specific tournament
-export const getTournamentSponsors = catchAsyncErrors(async (req, res, next) => {
-  const sponsors = await Sponsorship.find({
-    tournamentId: req.params.id,
-    status: { $in: ["approved", "active", "completed"] },
-  });
-
-  res.status(200).json({
-    success: true,
-    data: sponsors,
-  });
-});
-
-// @route   GET /api/v1/organizer/sponsors
-// @desc    Get all incoming sponsorship proposals for tournaments
-export const getOrganizerSponsors = catchAsyncErrors(async (req, res, next) => {
-  const sponsorships = await Sponsorship.find().sort({ createdAt: -1 });
-
-  res.status(200).json({
-    success: true,
-    data: sponsorships,
-  });
-});
-
-// @route   PATCH /api/v1/organizer/sponsors/:id/status
-// @desc    Update status of a sponsorship (Approve / Reject)
-export const updateSponsorshipStatus = catchAsyncErrors(async (req, res, next) => {
-  const { status } = req.body;
-  const sponsorship = await Sponsorship.findById(req.params.id);
-
-  if (!sponsorship) {
-    return next(new ErrorHandler("Sponsorship record not found", 404));
+    res.status(200).json({
+      success: true,
+      count: sponsorships.length,
+      data: sponsorships,
+    });
   }
+);
 
-  sponsorship.status = status;
-  await sponsorship.save();
 
-  // If approved, update payment status to success
-  if (status === "approved" || status === "active") {
-    await Payment.findOneAndUpdate(
-      { tournamentId: sponsorship.tournamentId, userId: sponsorship.sponsorUserId },
-      { status: "success" }
-    ).catch(() => null);
+// ============================================================
+// TOURNAMENT SPONSORS
+// ============================================================
+
+// @route   GET /api/v1/sponsors/tournaments/:id/sponsors
+// @desc    Get approved/active sponsors of tournament
+export const getTournamentSponsors = catchAsyncErrors(
+  async (req, res, next) => {
+
+    const sponsors = await Sponsorship.find({
+      tournamentId: req.params.id,
+
+      status: {
+        $in: [
+          "approved",
+          "active",
+          "completed",
+        ],
+      },
+    })
+      .populate(
+        "sponsorId",
+        "companyName brandName logoUrl industry"
+      )
+      .sort({
+        createdAt: -1,
+      });
+
+    res.status(200).json({
+      success: true,
+      count: sponsors.length,
+      data: sponsors,
+    });
   }
+);
 
-  res.status(200).json({
-    success: true,
-    data: sponsorship,
-  });
-});
+
+// ============================================================
+// ORGANIZER SPONSORSHIPS
+// ============================================================
+
+// NOTE:
+// We will update this function after you send the exact
+// Organizer model, so that we can safely restrict an organizer
+// to sponsorship requests belonging only to their tournaments.
+
+// @route   GET /api/v1/sponsors/organizer/sponsors
+// @desc    Get sponsorship requests for organizer
+export const getOrganizerSponsors = catchAsyncErrors(
+  async (req, res, next) => {
+
+    const organizer = await Organizer.findOne({
+      userId: req.user._id,
+    });
+
+    if (!organizer) {
+      return next(
+        new ErrorHandler(
+          "Organizer profile not found",
+          404
+        )
+      );
+    }
+
+    const tournaments = await Tournament.find({
+      organizer: organizer._id,
+    }).select("_id");
+
+    const tournamentIds = tournaments.map(
+      (tournament) => tournament._id
+    );
+
+    const sponsorships = await Sponsorship.find({
+      tournamentId: {
+        $in: tournamentIds,
+      },
+    })
+      .populate(
+        "tournamentId",
+        "title game tournamentType startDate endDate venue organizer"
+      )
+      .populate(
+        "sponsorId",
+        "companyName brandName industry website logoUrl"
+      )
+      .sort({
+        createdAt: -1,
+      });
+
+    res.status(200).json({
+      success: true,
+      count: sponsorships.length,
+      data: sponsorships,
+    });
+  }
+);
+
+
+// ============================================================
+// APPROVE / REJECT SPONSORSHIP
+// ============================================================
+
+// @route   PATCH /api/v1/sponsors/organizer/sponsors/:id/status
+// @desc    Approve or reject sponsorship
+export const updateSponsorshipStatus = catchAsyncErrors(
+  async (req, res, next) => {
+
+    const {
+      status,
+      rejectionReason = "",
+    } = req.body;
+
+    // ----------------------------------------------------
+    // 1. Validate status
+    // ----------------------------------------------------
+
+    if (!["approved", "rejected"].includes(status)) {
+      return next(
+        new ErrorHandler(
+          "Status must be either approved or rejected",
+          400
+        )
+      );
+    }
+
+    // ----------------------------------------------------
+    // 2. Find organizer
+    // ----------------------------------------------------
+
+    const organizer = await Organizer.findOne({
+      userId: req.user._id,
+    });
+
+    if (!organizer) {
+      return next(
+        new ErrorHandler(
+          "Organizer profile not found",
+          404
+        )
+      );
+    }
+
+    // ----------------------------------------------------
+    // 3. Find sponsorship
+    // ----------------------------------------------------
+
+    const sponsorship =
+      await Sponsorship.findById(req.params.id);
+
+    if (!sponsorship) {
+      return next(
+        new ErrorHandler(
+          "Sponsorship record not found",
+          404
+        )
+      );
+    }
+
+    // ----------------------------------------------------
+    // 4. Find tournament
+    // ----------------------------------------------------
+
+    const tournament = await Tournament.findById(
+      sponsorship.tournamentId
+    );
+
+    if (!tournament) {
+      return next(
+        new ErrorHandler(
+          "Tournament associated with sponsorship not found",
+          404
+        )
+      );
+    }
+
+    // ----------------------------------------------------
+    // 5. Verify tournament ownership
+    // ----------------------------------------------------
+
+    if (
+      tournament.organizer.toString() !==
+      organizer._id.toString()
+    ) {
+      return next(
+        new ErrorHandler(
+          "You are not authorized to manage this sponsorship",
+          403
+        )
+      );
+    }
+
+    // ----------------------------------------------------
+    // 6. Only pending requests can be reviewed
+    // ----------------------------------------------------
+
+    if (sponsorship.status !== "pending") {
+      return next(
+        new ErrorHandler(
+          "Only pending sponsorship requests can be reviewed",
+          400
+        )
+      );
+    }
+
+    // ----------------------------------------------------
+    // 7. Update sponsorship
+    // ----------------------------------------------------
+
+    sponsorship.status = status;
+
+    if (status === "approved") {
+
+      sponsorship.paymentStatus = "pending";
+      sponsorship.rejectionReason = "";
+
+    } else {
+
+      sponsorship.paymentStatus = "not_required";
+      sponsorship.rejectionReason =
+        rejectionReason.trim();
+    }
+
+    await sponsorship.save();
+
+    // ----------------------------------------------------
+    // IMPORTANT
+    // Approval does NOT mean payment succeeded.
+    // Sponsor must pay separately.
+    // ----------------------------------------------------
+
+    res.status(200).json({
+      success: true,
+
+      message:
+        status === "approved"
+          ? "Sponsorship approved. Payment is now pending."
+          : "Sponsorship rejected.",
+
+      data: sponsorship,
+    });
+  }
+);
+
+
+// ============================================================
+// ALL VERIFIED SPONSORS
+// ============================================================
 
 // @route   GET /api/v1/sponsors
-// @desc    Get all verified sponsors
-export const getAllSponsors = catchAsyncErrors(async (req, res, next) => {
-  const sponsors = await Sponsor.find().sort({ totalInvested: -1 });
+// @desc    Get all sponsors
+export const getAllSponsors = catchAsyncErrors(
+  async (req, res, next) => {
 
-  res.status(200).json({
-    success: true,
-    data: sponsors,
-  });
-});
+    const sponsors = await Sponsor.find({
+      status: "verified",
+    })
+      .select(
+        "companyName brandName industry website logoUrl description"
+      )
+      .sort({
+        totalInvested: -1,
+      });
+
+    res.status(200).json({
+      success: true,
+      count: sponsors.length,
+      data: sponsors,
+    });
+  }
+);

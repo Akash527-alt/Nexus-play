@@ -1,4 +1,5 @@
 import express from "express";
+
 import {
   getMySponsorProfile,
   updateSponsorProfile,
@@ -9,61 +10,87 @@ import {
   updateSponsorshipStatus,
   getAllSponsors,
 } from "../controller/sponsorController.js";
-import { isAuthenticatedUser, authorizeRoles } from "../middleware/auth.js";
+
+import {
+  isAuthenticatedUser,
+  authorizeRoles,
+} from "../middleware/auth.js";
 
 const router = express.Router();
 
-// Public / General Sponsors List
-router.route("/").get(getAllSponsors);
 
-// Sponsor Profile Routes
+// ============================================================
+// PUBLIC SPONSOR LIST
+// ============================================================
+
+router
+  .route("/")
+  .get(getAllSponsors);
+
+
+// ============================================================
+// SPONSOR PROFILE
+// ============================================================
+
 router
   .route("/me")
   .get(
     isAuthenticatedUser,
-    authorizeRoles("sponsor", "admin", "superadmin"),
+    authorizeRoles("sponsor", "superadmin"),
     getMySponsorProfile
   )
   .put(
     isAuthenticatedUser,
-    authorizeRoles("sponsor", "admin", "superadmin"),
+    authorizeRoles("sponsor", "superadmin"),
     updateSponsorProfile
   );
 
-// Sponsor submitted deals
+
+
 router
   .route("/sponsorships")
   .get(
     isAuthenticatedUser,
-    authorizeRoles("sponsor", "admin", "superadmin"),
+    authorizeRoles("sponsor", "superadmin"),
     getMySponsorships
   );
 
-// Tournament Sponsorship Action
+
+
 router
   .route("/tournaments/:id/sponsors")
   .post(
     isAuthenticatedUser,
-    authorizeRoles("sponsor", "admin", "superadmin"),
+    authorizeRoles("sponsor"),
     sponsorTournament
   )
-  .get(getTournamentSponsors);
 
-// Organizer sponsorship oversight
+  // View sponsors of tournament
+  .get(
+    getTournamentSponsors
+  );
+
+
+// ============================================================
+// ORGANIZER SPONSORSHIP MANAGEMENT
+// ============================================================
+
 router
   .route("/organizer/sponsors")
   .get(
     isAuthenticatedUser,
-    authorizeRoles("organizer", "admin", "superadmin"),
+    authorizeRoles("organizer", "superadmin"),
     getOrganizerSponsors
   );
+
 
 router
   .route("/organizer/sponsors/:id/status")
   .patch(
     isAuthenticatedUser,
-    authorizeRoles("organizer", "admin", "superadmin"),
+    authorizeRoles("organizer", "superadmin"),
     updateSponsorshipStatus
   );
+
 
 export default router;

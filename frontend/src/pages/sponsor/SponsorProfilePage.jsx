@@ -5,7 +5,7 @@ import {
   Mail,
   Phone,
   Save,
-  DollarSign,
+  IndianRupee,
   MapPin,
   UserRound,
   ShieldCheck,
@@ -304,7 +304,7 @@ export function SponsorProfilePage() {
               value={profile.budgetRange}
               onChange={handleChange}
               placeholder="₹25,000 - ₹50,000"
-              icon={DollarSign}
+              icon={IndianRupee}
             />
           </div>
 

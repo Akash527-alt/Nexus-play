@@ -2,29 +2,37 @@ import React, { useEffect, useState } from "react";
 import {
   Handshake,
   DollarSign,
-  Trophy,
   CheckCircle,
   XCircle,
   Clock,
-  Mail,
   ShieldCheck,
   Building2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { sponsorService } from "../../services/sponsorService";
-import { SponsorTierBadge } from "../../components/sponsor/SponsorTierBadge";
 
 export function SponsorsPage() {
   const [sponsorships, setSponsorships] = useState([]);
+
   const [loading, setLoading] = useState(true);
+
+  // ============================================================
+  // LOAD SPONSORSHIPS
+  // ============================================================
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const data = await sponsorService.getOrganizerSponsorships();
-      setSponsorships(data);
-    } catch (err) {
-      console.error(err);
+
+      const response = await sponsorService.getOrganizerSponsorships();
+
+      setSponsorships(response?.data || []);
+    } catch (error) {
+      console.error("Failed to load sponsorships:", error);
+
+      toast.error(
+        error?.response?.data?.message || "Failed to load sponsorships.",
+      );
     } finally {
       setLoading(false);
     }
@@ -34,154 +42,370 @@ export function SponsorsPage() {
     loadData();
   }, []);
 
-  const handleStatusUpdate = async (dealId, newStatus) => {
+  // ============================================================
+  // APPROVE / REJECT
+  // ============================================================
+
+  const handleStatusUpdate = async (sponsorshipId, newStatus) => {
+    let rejectionReason = "";
+
+    if (newStatus === "rejected") {
+      rejectionReason =
+        window.prompt("Enter rejection reason (optional):") || "";
+    }
+
     try {
-      const res = await sponsorService.updateSponsorshipStatus(dealId, newStatus);
-      if (res.success) {
-        toast.success(`Sponsorship proposal marked as ${newStatus}!`);
+      const response = await sponsorService.updateSponsorshipStatus(
+        sponsorshipId,
+        newStatus,
+        rejectionReason,
+      );
+
+      if (response?.success) {
+        toast.success(
+          newStatus === "approved"
+            ? "Sponsorship request approved."
+            : "Sponsorship request rejected.",
+        );
+
         loadData();
       }
-    } catch {
-      toast.error("Failed to update sponsorship status");
+    } catch (error) {
+      console.error("Failed to update sponsorship:", error);
+
+      toast.error(
+        error?.response?.data?.message ||
+          "Failed to update sponsorship status.",
+      );
     }
   };
 
-  const totalRaised = sponsorships
-    .filter((s) => s.status === "active" || s.status === "approved" || s.status === "completed")
-    .reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
+  // ============================================================
+  // STATISTICS
+  // ============================================================
 
-  const pendingCount = sponsorships.filter((s) => s.status === "pending").length;
-  const activeCount = sponsorships.filter((s) => s.status === "active" || s.status === "approved").length;
+  const totalApprovedAmount = sponsorships
+    .filter(
+      (sponsorship) =>
+        sponsorship.status === "approved" ||
+        sponsorship.status === "active" ||
+        sponsorship.status === "completed",
+    )
+    .reduce((sum, sponsorship) => sum + Number(sponsorship.amount || 0), 0);
+
+  const pendingCount = sponsorships.filter(
+    (sponsorship) => sponsorship.status === "pending",
+  ).length;
+
+  const activeCount = sponsorships.filter(
+    (sponsorship) =>
+      sponsorship.status === "active" || sponsorship.status === "approved",
+  ).length;
+
+  // ============================================================
+  // STATUS STYLE
+  // ============================================================
+
+  const getStatusStyle = (status) => {
+    switch (status) {
+      case "pending":
+        return "bg-amber-500/10 text-amber-400 border-amber-500/30";
+
+      case "approved":
+        return "bg-cyan-500/10 text-cyan-400 border-cyan-500/30";
+
+      case "active":
+        return "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+
+      case "rejected":
+        return "bg-rose-500/10 text-rose-400 border-rose-500/30";
+
+      case "completed":
+        return "bg-slate-500/10 text-slate-400 border-slate-500/30";
+
+      default:
+        return "bg-slate-500/10 text-slate-400 border-slate-500/30";
+    }
+  };
+
+  // ============================================================
+  // RENDER
+  // ============================================================
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold theme-text">Tournament Sponsors & Backers</h1>
-        <p className="text-xs md:text-sm theme-subtext">
-          Manage commercial sponsorship proposals, approve partner tiers, and review escrow disbursements.
+        <div className="flex items-center gap-2">
+          <Handshake className="w-5 h-5 text-indigo-400" />
+
+          <h1 className="text-2xl font-bold theme-text">Tournament Sponsors</h1>
+        </div>
+
+        <p className="text-xs md:text-sm theme-subtext mt-1">
+          Review sponsorship proposals submitted for your tournaments.
         </p>
       </div>
 
-      {/* KPI Stats */}
+      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="theme-card border theme-border rounded-2xl p-5 shadow-xs">
-          <p className="text-xs font-bold uppercase tracking-wider theme-subtext">
-            Total Sponsorship Raised
-          </p>
+        <div className="theme-card border theme-border rounded-2xl p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wider theme-subtext">
+              Approved Sponsorship
+            </p>
+
+            <DollarSign className="w-5 h-5 text-emerald-400" />
+          </div>
+
           <p className="text-2xl font-black text-emerald-400 mt-2">
-            ${totalRaised.toLocaleString()}
+            ₹{totalApprovedAmount.toLocaleString("en-IN")}
           </p>
-          <p className="text-[11px] theme-subtext mt-0.5">Disbursed to tournament prize pools</p>
+
+          <p className="text-[11px] theme-subtext mt-1">
+            Approved sponsorship proposals
+          </p>
         </div>
 
-        <div className="theme-card border theme-border rounded-2xl p-5 shadow-xs">
-          <p className="text-xs font-bold uppercase tracking-wider theme-subtext">
-            Active Brand Partners
-          </p>
+        <div className="theme-card border theme-border rounded-2xl p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wider theme-subtext">
+              Active Partners
+            </p>
+
+            <Building2 className="w-5 h-5 text-cyan-400" />
+          </div>
+
           <p className="text-2xl font-black theme-text mt-2">{activeCount}</p>
-          <p className="text-[11px] theme-subtext mt-0.5">Approved commercial contracts</p>
+
+          <p className="text-[11px] theme-subtext mt-1">
+            Approved or active sponsorships
+          </p>
         </div>
 
-        <div className="theme-card border theme-border rounded-2xl p-5 shadow-xs">
-          <p className="text-xs font-bold uppercase tracking-wider theme-subtext">
-            Pending Proposals
+        <div className="theme-card border theme-border rounded-2xl p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wider theme-subtext">
+              Pending Requests
+            </p>
+
+            <Clock className="w-5 h-5 text-amber-400" />
+          </div>
+
+          <p className="text-2xl font-black text-amber-400 mt-2">
+            {pendingCount}
           </p>
-          <p className="text-2xl font-black text-amber-400 mt-2">{pendingCount}</p>
-          <p className="text-[11px] theme-subtext mt-0.5">Awaiting organizer approval</p>
+
+          <p className="text-[11px] theme-subtext mt-1">Awaiting your review</p>
         </div>
       </div>
 
-      {/* Proposals List */}
+      {/* Requests */}
       <div className="space-y-4">
-        <h2 className="text-base font-bold theme-text">Sponsorship Applications & Contracts</h2>
+        <div>
+          <h2 className="text-base font-bold theme-text">
+            Sponsorship Requests
+          </h2>
+
+          <p className="text-xs theme-subtext mt-1">
+            Review the proposed amount and requirements before approving or
+            rejecting a request.
+          </p>
+        </div>
 
         {loading ? (
-          <div className="p-12 text-center text-xs theme-subtext">Loading sponsorships...</div>
-        ) : sponsorships.length === 0 ? (
-          <div className="theme-card border theme-border rounded-2xl p-12 text-center space-y-2">
-            <Handshake className="w-10 h-10 theme-subtext mx-auto opacity-40" />
-            <p className="text-sm font-bold theme-text">No incoming sponsorship requests yet</p>
+          <div className="theme-card border theme-border rounded-2xl p-12 text-center">
             <p className="text-xs theme-subtext">
-              Tournaments published publicly on NexusPlay can be discovered and sponsored by commercial brands.
+              Loading sponsorship requests...
+            </p>
+          </div>
+        ) : sponsorships.length === 0 ? (
+          <div className="theme-card border theme-border rounded-2xl p-12 text-center space-y-3">
+            <Handshake className="w-10 h-10 theme-subtext mx-auto opacity-40" />
+
+            <p className="text-sm font-bold theme-text">
+              No sponsorship requests yet
+            </p>
+
+            <p className="text-xs theme-subtext max-w-md mx-auto">
+              Sponsorship requests submitted for your tournaments will appear
+              here.
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {sponsorships.map((deal) => (
-              <div
-                key={deal.id}
-                className="theme-card border theme-border rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs"
-              >
-                <div className="space-y-2 max-w-xl">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <SponsorTierBadge tier={deal.tier} size="sm" />
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-full border border-indigo-500/30 text-indigo-400 bg-indigo-500/10">
-                      ${Number(deal.amount).toLocaleString()}
-                    </span>
-                    <span
-                      className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
-                        deal.status === "active" || deal.status === "approved"
-                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                          : deal.status === "pending"
-                          ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
-                          : "bg-slate-500/10 text-slate-400 border-slate-500/30"
-                      }`}
-                    >
-                      {deal.status}
-                    </span>
+          <div className="space-y-4">
+            {sponsorships.map((sponsorship) => {
+              const tournament = sponsorship.tournamentId;
+
+              const sponsor = sponsorship.sponsorId;
+
+              const tournamentTitle =
+                tournament?.title ||
+                sponsorship.tournamentTitle ||
+                "Tournament";
+
+              const sponsorName =
+                sponsor?.companyName || sponsor?.brandName || "Sponsor";
+
+              return (
+                <div
+                  key={sponsorship._id}
+                  className="theme-card border theme-border rounded-2xl p-5 shadow-xs"
+                >
+                  {/* Top */}
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                    <div className="space-y-3 flex-1 min-w-0">
+                      {/* Status + Amount */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border ${getStatusStyle(
+                            sponsorship.status,
+                          )}`}
+                        >
+                          {sponsorship.status}
+                        </span>
+
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-full border border-indigo-500/30 text-indigo-400 bg-indigo-500/10">
+                          ₹
+                          {Number(sponsorship.amount || 0).toLocaleString(
+                            "en-IN",
+                          )}
+                        </span>
+
+                        <span className="text-[10px] theme-subtext">
+                          Payment:{" "}
+                          <span className="font-semibold theme-text">
+                            {sponsorship.paymentStatus || "not_required"}
+                          </span>
+                        </span>
+                      </div>
+
+                      {/* Tournament */}
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider theme-subtext">
+                          Tournament
+                        </p>
+
+                        <h3 className="text-base font-bold theme-text mt-0.5">
+                          {tournamentTitle}
+                        </h3>
+
+                        <p className="text-xs theme-subtext mt-1">
+                          {sponsorship.game || tournament?.game || "Esports"}
+                        </p>
+                      </div>
+
+                      {/* Sponsor */}
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider theme-subtext">
+                          Sponsor
+                        </p>
+
+                        <p className="text-sm font-semibold theme-text mt-0.5">
+                          {sponsorName}
+                        </p>
+
+                        {sponsor?.industry && (
+                          <p className="text-xs theme-subtext">
+                            {sponsor.industry}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Requirements */}
+                      <div className="theme-icon-box border theme-border rounded-xl p-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wider theme-subtext">
+                          Sponsorship Requirements
+                        </p>
+
+                        <p className="text-xs theme-text mt-1 leading-relaxed">
+                          {sponsorship.requirements ||
+                            "No requirements provided."}
+                        </p>
+                      </div>
+
+                      {/* Message */}
+                      {sponsorship.message && (
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wider theme-subtext">
+                            Message
+                          </p>
+
+                          <p className="text-xs theme-subtext mt-1">
+                            {sponsorship.message}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Rejection */}
+                      {sponsorship.rejectionReason && (
+                        <div className="border border-rose-500/20 bg-rose-500/5 rounded-xl p-3">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-rose-400">
+                            Rejection Reason
+                          </p>
+
+                          <p className="text-xs theme-subtext mt-1">
+                            {sponsorship.rejectionReason}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex lg:flex-col items-center lg:items-stretch gap-2 shrink-0">
+                      {sponsorship.status === "pending" ? (
+                        <>
+                          <button
+                            onClick={() =>
+                              handleStatusUpdate(sponsorship._id, "approved")
+                            }
+                            className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition cursor-pointer"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                            Approve
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              handleStatusUpdate(sponsorship._id, "rejected")
+                            }
+                            className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-rose-400 hover:bg-rose-500/10 border border-rose-500/30 rounded-xl transition cursor-pointer"
+                          >
+                            <XCircle className="w-4 h-4" />
+                            Reject
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-xs theme-subtext flex items-center gap-1 font-semibold">
+                          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+
+                          {sponsorship.status === "rejected"
+                            ? "Rejected"
+                            : "Reviewed"}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  <h3 className="text-sm font-bold theme-text">
-                    {deal.tournamentTitle}
-                  </h3>
-
-                  <p className="text-xs theme-subtext">
-                    Applicant: <span className="font-semibold theme-text">Razer Gaming Tech</span> (
-                    {deal.organizerEmail || "partnerships@razer.com"})
-                  </p>
-
-                  {deal.deliverables && (
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {deal.deliverables.slice(0, 3).map((d, i) => (
-                        <span
-                          key={i}
-                          className="text-[10px] px-2 py-0.5 rounded-lg theme-icon-box border theme-border theme-subtext"
-                        >
-                          ✓ {d}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0 border-t md:border-t-0 pt-3 md:pt-0 theme-border">
-                  {deal.status === "pending" ? (
-                    <>
-                      <button
-                        onClick={() => handleStatusUpdate(deal.id, "approved")}
-                        className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition cursor-pointer shadow-xs"
-                      >
-                        <CheckCircle className="w-3.5 h-3.5" />
-                        <span>Accept Proposal</span>
-                      </button>
-                      <button
-                        onClick={() => handleStatusUpdate(deal.id, "rejected")}
-                        className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-rose-400 hover:bg-rose-500/10 border border-rose-500/30 rounded-xl transition cursor-pointer"
-                      >
-                        <XCircle className="w-3.5 h-3.5" />
-                        <span>Decline</span>
-                      </button>
-                    </>
-                  ) : (
-                    <span className="text-xs theme-subtext flex items-center gap-1 font-semibold">
-                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                      <span>Contract Active</span>
+                  {/* Footer */}
+                  <div className="pt-3 mt-4 border-t theme-border flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[11px] theme-subtext">
+                      Submitted{" "}
+                      {sponsorship.createdAt
+                        ? new Date(sponsorship.createdAt).toLocaleDateString()
+                        : "—"}
                     </span>
-                  )}
+
+                    {tournament?.startDate && (
+                      <span className="text-[11px] theme-subtext">
+                        Tournament:{" "}
+                        {new Date(tournament.startDate).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
