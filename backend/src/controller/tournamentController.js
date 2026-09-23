@@ -124,7 +124,10 @@ export const getAllTournaments = catchAsyncErrors(
 
         // apiFilters.pagination(resPerPage);
 
-        const tournaments = await apiFilters.query;
+         const tournaments = await apiFilters.query.populate(
+            "organizer",
+            "organizationName organizationType verificationStatus"
+        );
 
         const currentPage = Number(req.query.page) || 1;
 
