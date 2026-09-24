@@ -58,6 +58,7 @@ import { SponsorsManagementPage } from "./pages/superadmin/SponsorsManagementPag
 import { PaymentsManagementPage } from "./pages/superadmin/PaymentsManagementPage";
 import { ReportsPage } from "./pages/superadmin/ReportsPage";
 import { PlatformSettingsPage } from "./pages/superadmin/PlatformSettingsPage";
+import {SponsorshipsPage} from "./pages/superadmin/SponsorshipsPage";
 
 // Protection & Error Handling
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
@@ -105,7 +106,7 @@ function App() {
               <Route
                 path="/participant/*"
                 element={
-                  <ProtectedRoute roles={["user", "admin", "superadmin"]}>
+                  <ProtectedRoute roles={["user"]}>
                     <ParticipantLayout>
                       <Routes>
                         <Route
@@ -147,7 +148,7 @@ function App() {
               <Route
                 path="/organizer/*"
                 element={
-                  <ProtectedRoute roles={["organizer", "admin", "superadmin"]}>
+                  <ProtectedRoute roles={["organizer"]}>
                     <OrganizerLayout>
                       <Routes>
                         <Route path="dashboard" element={<DashboardPage />} />
@@ -187,7 +188,7 @@ function App() {
               <Route
                 path="/sponsor/*"
                 element={
-                  <ProtectedRoute roles={["sponsor", "superadmin", "admin"]}>
+                  <ProtectedRoute roles={["sponsor"]}>
                     <SponsorLayout>
                       <Routes>
                         <Route
@@ -243,6 +244,10 @@ function App() {
                         <Route
                           path="tournaments"
                           element={<TournamentsModerationPage />}
+                        />
+                        <Route
+                          path="/sponsorships"
+                          element={<SponsorshipsPage />}
                         />
                         <Route
                           path="sponsors"

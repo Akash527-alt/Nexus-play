@@ -1,528 +1,578 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Eye,
-  CheckCircle,
-  XCircle,
-  Ban,
-  Loader2,
-  X,
+  Search,
   Building2,
   Mail,
   Phone,
   Globe,
   MapPin,
-  Wallet,
+  Calendar,
   ShieldCheck,
+  XCircle,
+  Ban,
+  Eye,
+  RefreshCw,
+  User,
+  CreditCard,
 } from "lucide-react";
-import { toast } from "react-hot-toast";
+import { adminService } from "../../services/adminService";
 
-import adminService from "../../services/adminService";
+const statusStyles = {
+  pending: "text-amber-400 bg-amber-400/10 border-amber-400/20",
+  verified: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
+  active: "text-blue-400 bg-blue-400/10 border-blue-400/20",
+  rejected: "text-red-400 bg-red-400/10 border-red-400/20",
+  suspended: "text-orange-400 bg-orange-400/10 border-orange-400/20",
+};
+
+const formatStatus = (status) =>
+  status
+    ? status.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase())
+    : "Unknown";
+
+const formatDate = (date) => {
+  if (!date) return "—";
+
+  return new Date(date).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const InfoItem = ({ icon: Icon, label, value }) => (
+  <div className="flex gap-3">
+    <div className="mt-0.5 text-indigo-400">
+      <Icon size={17} />
+    </div>
+
+    <div className="min-w-0">
+      <p className="text-xs theme-subtext">{label}</p>
+      <p className="mt-1 break-words text-sm theme-text">{value || "—"}</p>
+    </div>
+  </div>
+);
+
+const DetailSection = ({ title, children }) => (
+  <div className="border-b theme-border pb-5 last:border-0 last:pb-0">
+    <h3 className="mb-4 text-sm font-semibold theme-text">{title}</h3>
+    {children}
+  </div>
+);
 
 export const SponsorsManagementPage = () => {
   const [sponsors, setSponsors] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [selectedSponsor, setSelectedSponsor] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Fetch all sponsors
-  const loadSponsors = async () => {
+const fetchSponsors = async (showRefresh = false) => {
     try {
-      setLoading(true);
+      if (showRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      setError("");
 
       const response = await adminService.getSponsors();
 
-      setSponsors(response || []);
-    } catch (error) {
-      console.error("Failed to load sponsors:", error);
-
-      toast.error(error.response?.data?.message || "Failed to load sponsors");
+      setSponsors(response?.sponsors || []);
+    } catch (err) {
+      setError(err?.response?.data?.message || "Failed to load sponsors");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    loadSponsors();
+    fetchSponsors();
   }, []);
 
-  // Open sponsor details modal
-  const openSponsorDetails = async (sponsorId) => {
-    try {
-      setDetailsLoading(true);
+  const filteredSponsors = useMemo(() => {
+    const value = search.trim().toLowerCase();
 
-      const response = await adminService.getSponsorDetails(sponsorId);
+    return sponsors.filter((sponsor) => {
+      const matchesStatus =
+        statusFilter === "all" || sponsor.status === statusFilter;
 
-      const sponsor = response.sponsor || response.data || response;
+      const matchesSearch =
+        !value ||
+        sponsor.companyName?.toLowerCase().includes(value) ||
+        sponsor.brandName?.toLowerCase().includes(value) ||
+        sponsor.contactEmail?.toLowerCase().includes(value) ||
+        sponsor.industry?.toLowerCase().includes(value) ||
+        sponsor.representativeName?.toLowerCase().includes(value);
 
-      setSelectedSponsor(sponsor);
-    } catch (error) {
-      console.error("Failed to load sponsor details:", error);
+      return matchesStatus && matchesSearch;
+    });
+  }, [sponsors, search, statusFilter]);
 
-      toast.error(
-        error.response?.data?.message || "Failed to load sponsor details",
-      );
-    } finally {
-      setDetailsLoading(false);
-    }
-  };
-
-  // Perform sponsor action
   const handleAction = async (action) => {
-    console.log("ACTION RECEIVED:", action);
-    console.log("SELECTED SPONSOR:", selectedSponsor);
     if (!selectedSponsor) return;
-
-    const sponsorId = selectedSponsor._id || selectedSponsor.id;
 
     try {
       setActionLoading(true);
 
       if (action === "verify") {
-        await adminService.verifySponsor(sponsorId);
-
-        toast.success("Sponsor verified successfully");
+        await adminService.verifySponsor(selectedSponsor._id);
       }
 
       if (action === "reject") {
-        await adminService.rejectSponsor(sponsorId);
-
-        toast.success("Sponsor rejected successfully");
+        await adminService.rejectSponsor(selectedSponsor._id);
       }
 
       if (action === "suspend") {
-        await adminService.suspendSponsor(sponsorId);
-
-        toast.success("Sponsor suspended successfully");
+        await adminService.suspendSponsor(selectedSponsor._id);
       }
 
+      await fetchSponsors();
       setSelectedSponsor(null);
-
-      await loadSponsors();
-    } catch (error) {
-      console.error("Sponsor action failed:", error);
-
-      toast.error(error.response?.data?.message || "Unable to perform action");
+    } catch (err) {
+      setError(err?.response?.data?.message || `Failed to ${action} sponsor`);
     } finally {
       setActionLoading(false);
     }
   };
 
-  // Status styling for dark theme
-  const getStatusStyle = (status) => {
-    const styles = {
-      pending: "bg-amber-500/15 text-amber-400 border border-amber-500/30",
-
-      verified:
-        "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30",
-
-      active: "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30",
-
-      rejected: "bg-rose-500/15 text-rose-400 border border-rose-500/30",
-
-      suspended: "bg-slate-500/20 text-slate-300 border border-slate-500/30",
-    };
-
-    return (
-      styles[status] ||
-      "bg-slate-500/20 text-slate-300 border border-slate-500/30"
-    );
-  };
-
-  if (loading) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center bg-transparent">
-        <Loader2 size={32} className="animate-spin text-pink-500" />
-      </div>
-    );
-  }
-
   return (
-    <div className="w-full space-y-6 p-4 sm:p-6 lg:p-8">
-      {/* Page Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <div className="mb-2 flex items-center gap-2">
-            <ShieldCheck size={18} className="text-cyan-400" />
-
-            <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
-              Governance Suite
-            </span>
-          </div>
-
-          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-            Sponsors Management
-          </h1>
-
-          <p className="mt-2 text-sm text-slate-400 sm:text-base">
-            Review and manage sponsor verification requests.
+          <h1 className="text-2xl font-bold theme-text">Corporate Sponsors</h1>
+          <p className="mt-1 text-sm theme-subtext">
+            Review sponsor profiles and manage verification status.
           </p>
         </div>
 
-        <div className="w-fit rounded-full border border-slate-700 bg-slate-800/70 px-4 py-2 text-sm text-slate-300">
-          Total Sponsors:{" "}
-          <span className="font-semibold text-white">{sponsors.length}</span>
-        </div>
+        <button
+          onClick={() => fetchSponsors(true)}
+          disabled={refreshing}
+          className="inline-flex items-center justify-center gap-2 rounded-lg border theme-border px-4 py-2 text-sm theme-text transition hover:bg-white/5 disabled:opacity-50"
+        >
+          <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+          Refresh
+        </button>
       </div>
 
-      {/* Desktop Table */}
-      <div className="hidden overflow-hidden rounded-2xl border border-slate-700/80 bg-slate-800/60 shadow-xl md:block">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left">
-            <thead className="border-b border-slate-700 bg-slate-800/90">
-              <tr>
-                <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Company
-                </th>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        {[
+          ["All", "all"],
+          ["Pending", "pending"],
+          ["Verified", "verified"],
+          ["Rejected", "rejected"],
+          ["Suspended", "suspended"],
+        ].map(([label, value]) => {
+          const count =
+            value === "all"
+              ? sponsors.length
+              : sponsors.filter((sponsor) => sponsor.status === value).length;
 
-                <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Contact
-                </th>
-
-                <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Status
-                </th>
-
-                <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Total Invested
-                </th>
-
-                <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Action
-                </th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-slate-700/70">
-              {sponsors.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan="5"
-                    className="px-6 py-12 text-center text-slate-400"
-                  >
-                    No sponsors found.
-                  </td>
-                </tr>
-              ) : (
-                sponsors.map((sponsor) => (
-                  <tr
-                    key={sponsor._id || sponsor.id}
-                    className="transition-colors hover:bg-slate-700/30"
-                  >
-                    <td className="px-5 py-5">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-pink-500/15 text-pink-400">
-                          <Building2 size={19} />
-                        </div>
-
-                        <div className="min-w-0">
-                          <p className="max-w-[190px] truncate font-semibold text-white">
-                            {sponsor.companyName || sponsor.brandName || "N/A"}
-                          </p>
-
-                          <p className="mt-1 text-xs text-slate-400">
-                            {sponsor.industry || "Gaming & Esports"}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="px-5 py-5">
-                      <p className="max-w-[220px] break-all text-sm text-slate-300">
-                        {sponsor.contactEmail || sponsor.userId?.email || "N/A"}
-                      </p>
-
-                      <p className="mt-1 text-xs text-slate-500">
-                        {sponsor.contactPhone || "No phone"}
-                      </p>
-                    </td>
-
-                    <td className="px-5 py-5">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-medium capitalize ${getStatusStyle(
-                          sponsor.status,
-                        )}`}
-                      >
-                        {sponsor.status || "pending"}
-                      </span>
-                    </td>
-
-                    <td className="px-5 py-5 text-sm text-slate-300">
-                      ₹
-                      {Number(sponsor.totalInvested || 0).toLocaleString(
-                        "en-IN",
-                      )}
-                    </td>
-
-                    <td className="px-5 py-5">
-                      <button
-                        onClick={() =>
-                          openSponsorDetails(sponsor._id || sponsor.id)
-                        }
-                        disabled={detailsLoading}
-                        className="inline-flex items-center gap-2 rounded-lg border border-indigo-500/40 bg-indigo-500/15 px-3 py-2 text-sm font-medium text-indigo-300 transition hover:bg-indigo-500/25 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <Eye size={16} />
-                        Review
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Mobile Cards */}
-      <div className="grid grid-cols-1 gap-4 md:hidden">
-        {sponsors.length === 0 ? (
-          <div className="rounded-2xl border border-slate-700 bg-slate-800/60 p-8 text-center text-slate-400">
-            No sponsors found.
-          </div>
-        ) : (
-          sponsors.map((sponsor) => (
-            <div
-              key={sponsor._id || sponsor.id}
-              className="rounded-2xl border border-slate-700/80 bg-slate-800/60 p-4 shadow-lg"
+          return (
+            <button
+              key={value}
+              onClick={() => setStatusFilter(value)}
+              className={`rounded-xl border p-4 text-left transition ${
+                statusFilter === value
+                  ? "border-indigo-500/50 bg-indigo-500/10"
+                  : "theme-border theme-card hover:bg-white/5"
+              }`}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-pink-500/15 text-pink-400">
-                    <Building2 size={18} />
+              <p className="text-xs theme-subtext">{label}</p>
+              <p className="mt-1 text-xl font-bold theme-text">{count}</p>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="theme-card rounded-xl border theme-border p-4">
+        <div className="relative">
+          <Search
+            size={18}
+            className="absolute left-3 top-1/2 -translate-y-1/2 theme-subtext"
+          />
+
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search company, brand, industry, email..."
+            className="theme-input w-full rounded-lg border py-2.5 pl-10 pr-4 text-sm outline-none"
+          />
+        </div>
+      </div>
+
+      {error && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="theme-card rounded-xl border theme-border p-10 text-center">
+          <RefreshCw size={22} className="mx-auto animate-spin theme-subtext" />
+          <p className="mt-3 text-sm theme-subtext">Loading sponsors...</p>
+        </div>
+      ) : filteredSponsors.length === 0 ? (
+        <div className="theme-card rounded-xl border theme-border p-10 text-center">
+          <Building2 size={32} className="mx-auto theme-subtext" />
+          <p className="mt-3 font-medium theme-text">No sponsors found</p>
+          <p className="mt-1 text-sm theme-subtext">
+            Try changing the search or status filter.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="hidden overflow-hidden rounded-xl border theme-border lg:block">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b theme-border bg-white/[0.02]">
+                  <tr>
+                    <th className="px-5 py-4 text-left text-xs font-medium theme-subtext">
+                      Sponsor
+                    </th>
+                    <th className="px-5 py-4 text-left text-xs font-medium theme-subtext">
+                      Contact
+                    </th>
+                    <th className="px-5 py-4 text-left text-xs font-medium theme-subtext">
+                      Industry
+                    </th>
+                    <th className="px-5 py-4 text-left text-xs font-medium theme-subtext">
+                      Status
+                    </th>
+                    <th className="px-5 py-4 text-right text-xs font-medium theme-subtext">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {filteredSponsors.map((sponsor) => (
+                    <tr
+                      key={sponsor._id}
+                      className="border-b theme-border last:border-b-0"
+                    >
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400">
+                            <Building2 size={18} />
+                          </div>
+
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold theme-text">
+                              {sponsor.companyName}
+                            </p>
+
+                            <p className="truncate text-xs theme-subtext">
+                              {sponsor.brandName || "No brand name"}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <p className="text-sm theme-text">
+                          {sponsor.contactEmail || "—"}
+                        </p>
+                        <p className="mt-1 text-xs theme-subtext">
+                          {sponsor.contactPhone || "No phone"}
+                        </p>
+                      </td>
+
+                      <td className="px-5 py-4 text-sm theme-text">
+                        {sponsor.industry || "—"}
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <span
+                          className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
+                            statusStyles[sponsor.status] ||
+                            "theme-border theme-text"
+                          }`}
+                        >
+                          {formatStatus(sponsor.status)}
+                        </span>
+                      </td>
+
+                      <td className="px-5 py-4 text-right">
+                        <button
+                          onClick={() => setSelectedSponsor(sponsor)}
+                          className="inline-flex items-center gap-2 rounded-lg border theme-border px-3 py-2 text-sm theme-text transition hover:bg-white/5"
+                        >
+                          <Eye size={15} />
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:hidden">
+            {filteredSponsors.map((sponsor) => (
+              <div
+                key={sponsor._id}
+                className="theme-card rounded-xl border theme-border p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400">
+                      <Building2 size={18} />
+                    </div>
+
+                    <div className="min-w-0">
+                      <h3 className="truncate text-sm font-semibold theme-text">
+                        {sponsor.companyName}
+                      </h3>
+
+                      <p className="truncate text-xs theme-subtext">
+                        {sponsor.brandName || "No brand name"}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="min-w-0">
-                    <h3 className="truncate font-semibold text-white">
-                      {sponsor.companyName || sponsor.brandName || "N/A"}
-                    </h3>
-
-                    <p className="mt-1 text-xs text-slate-400">
-                      {sponsor.industry || "Gaming & Esports"}
-                    </p>
-                  </div>
-                </div>
-
-                <span
-                  className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold capitalize ${getStatusStyle(
-                    sponsor.status,
-                  )}`}
-                >
-                  {sponsor.status || "pending"}
-                </span>
-              </div>
-
-              <div className="mt-5 space-y-3 border-t border-slate-700/70 pt-4">
-                <div className="flex items-start gap-3">
-                  <Mail size={16} className="mt-0.5 shrink-0 text-slate-500" />
-
-                  <p className="break-all text-sm text-slate-300">
-                    {sponsor.contactEmail || sponsor.userId?.email || "N/A"}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <Phone size={16} className="shrink-0 text-slate-500" />
-
-                  <p className="text-sm text-slate-300">
-                    {sponsor.contactPhone || "No phone"}
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-slate-500">Total Invested</span>
-
-                  <span className="text-sm font-semibold text-emerald-400">
-                    ₹
-                    {Number(sponsor.totalInvested || 0).toLocaleString("en-IN")}
+                  <span
+                    className={`shrink-0 rounded-full border px-2 py-1 text-[11px] ${
+                      statusStyles[sponsor.status] || "theme-border theme-text"
+                    }`}
+                  >
+                    {formatStatus(sponsor.status)}
                   </span>
                 </div>
+
+                <div className="mt-4 space-y-3">
+                  <InfoItem
+                    icon={Mail}
+                    label="Email"
+                    value={sponsor.contactEmail}
+                  />
+
+                  <InfoItem
+                    icon={Building2}
+                    label="Industry"
+                    value={sponsor.industry}
+                  />
+
+                  <InfoItem
+                    icon={User}
+                    label="Representative"
+                    value={sponsor.representativeName}
+                  />
+                </div>
+
+                <button
+                  onClick={() => setSelectedSponsor(sponsor)}
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border theme-border px-3 py-2 text-sm theme-text transition hover:bg-white/5"
+                >
+                  <Eye size={15} />
+                  View Details
+                </button>
               </div>
+            ))}
+          </div>
+        </>
+      )}
 
-              <button
-                onClick={() => openSponsorDetails(sponsor._id || sponsor.id)}
-                className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-500/40 bg-indigo-500/15 px-4 py-3 text-sm font-semibold text-indigo-300 transition hover:bg-indigo-500/25"
-              >
-                <Eye size={16} />
-                Review Details
-              </button>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Sponsor Details Modal */}
       {selectedSponsor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 backdrop-blur-sm sm:p-6">
-          <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-700 bg-slate-800/80 px-4 py-4 sm:px-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="theme-card max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-2xl border theme-border shadow-2xl">
+            <div className="flex items-center justify-between border-b theme-border p-5">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-pink-500/15 text-pink-400">
-                  <Building2 size={19} />
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400">
+                  <Building2 size={20} />
                 </div>
 
                 <div className="min-w-0">
-                  <h2 className="truncate text-lg font-bold text-white sm:text-xl">
-                    Sponsor Details
+                  <h2 className="truncate text-lg font-semibold theme-text">
+                    {selectedSponsor.companyName}
                   </h2>
 
-                  <p className="text-xs text-slate-400">Verification review</p>
+                  <p className="text-xs theme-subtext">
+                    {selectedSponsor.brandName || "Corporate Sponsor"}
+                  </p>
                 </div>
               </div>
 
               <button
                 onClick={() => setSelectedSponsor(null)}
-                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-700 hover:text-white"
+                className="rounded-lg p-2 theme-subtext transition hover:bg-white/5 hover:text-white"
               >
-                <X size={20} />
+                <XCircle size={20} />
               </button>
             </div>
 
-            {/* Modal Content */}
-            <div className="overflow-y-auto p-4 sm:p-6">
-              {/* Status */}
-              <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-700 bg-slate-800/60 p-4">
-                <span className="text-sm text-slate-400">Current Status</span>
+            <div className="max-h-[calc(90vh-150px)] overflow-y-auto p-5">
+              <div className="space-y-6">
+                <DetailSection title="Sponsor Information">
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <InfoItem
+                      icon={Building2}
+                      label="Company Name"
+                      value={selectedSponsor.companyName}
+                    />
 
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${getStatusStyle(
-                    selectedSponsor.status,
-                  )}`}
-                >
-                  {selectedSponsor.status || "pending"}
-                </span>
-              </div>
+                    <InfoItem
+                      icon={Building2}
+                      label="Brand Name"
+                      value={selectedSponsor.brandName}
+                    />
 
-              {/* Details Grid */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Detail
-                  icon={Building2}
-                  label="Company Name"
-                  value={selectedSponsor.companyName}
-                />
+                    <InfoItem
+                      icon={Building2}
+                      label="Industry"
+                      value={selectedSponsor.industry}
+                    />
 
-                <Detail
-                  icon={Building2}
-                  label="Brand Name"
-                  value={selectedSponsor.brandName}
-                />
+                    <InfoItem
+                      icon={Globe}
+                      label="Website"
+                      value={selectedSponsor.website}
+                    />
 
-                <Detail label="Industry" value={selectedSponsor.industry} />
+                    <InfoItem
+                      icon={CreditCard}
+                      label="Budget Range"
+                      value={selectedSponsor.budgetRange}
+                    />
 
-                <Detail
-                  icon={Mail}
-                  label="Contact Email"
-                  value={selectedSponsor.contactEmail}
-                />
+                    <InfoItem
+                      icon={Calendar}
+                      label="Joined"
+                      value={formatDate(selectedSponsor.createdAt)}
+                    />
+                  </div>
 
-                <Detail
-                  icon={Phone}
-                  label="Contact Phone"
-                  value={selectedSponsor.contactPhone}
-                />
+                  {selectedSponsor.description && (
+                    <div className="mt-5">
+                      <p className="text-xs theme-subtext">Description</p>
+                      <p className="mt-1 whitespace-pre-wrap text-sm theme-text">
+                        {selectedSponsor.description}
+                      </p>
+                    </div>
+                  )}
+                </DetailSection>
 
-                <Detail
-                  icon={Globe}
-                  label="Website"
-                  value={selectedSponsor.website}
-                />
+                <DetailSection title="Contact Information">
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <InfoItem
+                      icon={User}
+                      label="Representative"
+                      value={selectedSponsor.representativeName}
+                    />
 
-                <Detail
-                  icon={Wallet}
-                  label="Budget Range"
-                  value={selectedSponsor.budgetRange}
-                />
+                    <InfoItem
+                      icon={Mail}
+                      label="Email"
+                      value={selectedSponsor.contactEmail}
+                    />
 
-                <Detail
-                  icon={Wallet}
-                  label="Total Invested"
-                  value={`₹${Number(
-                    selectedSponsor.totalInvested || 0,
-                  ).toLocaleString("en-IN")}`}
-                />
+                    <InfoItem
+                      icon={Phone}
+                      label="Phone"
+                      value={selectedSponsor.contactPhone}
+                    />
+                  </div>
+                </DetailSection>
 
-                <Detail
-                  icon={MapPin}
-                  label="Address"
-                  value={selectedSponsor.address}
-                />
+              
 
-                <Detail
-                  label="Representative Name"
-                  value={selectedSponsor.representativeName}
-                />
+                <DetailSection title="Verification">
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <InfoItem
+                      icon={CreditCard}
+                      label="Aadhaar Number"
+                      value={selectedSponsor.aadhaarNumber}
+                    />
 
-                <Detail
-                  label="Aadhaar Number"
-                  value={
-                    selectedSponsor.aadhaarNumber
-                      ? `********${String(selectedSponsor.aadhaarNumber).slice(
-                          -4,
-                        )}`
-                      : "Not provided"
-                  }
-                />
+                    <InfoItem
+                      icon={CreditCard}
+                      label="PAN Number"
+                      value={selectedSponsor.panNumber}
+                    />
 
-                <Detail
-                  label="PAN Number"
-                  value={
-                    selectedSponsor.panNumber
-                      ? `******${String(selectedSponsor.panNumber).slice(-4)}`
-                      : "Not provided"
-                  }
-                />
-              </div>
+                    <InfoItem
+                      icon={ShieldCheck}
+                      label="Current Status"
+                      value={formatStatus(selectedSponsor.status)}
+                    />
 
-              {/* Description */}
-              <div className="mt-4 rounded-xl border border-slate-700 bg-slate-800/60 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Description
-                </p>
+                    <InfoItem
+                      icon={Calendar}
+                      label="Last Updated"
+                      value={formatDate(selectedSponsor.updatedAt)}
+                    />
+                  </div>
+                </DetailSection>
 
-                <p className="mt-2 break-words text-sm leading-6 text-slate-300">
-                  {selectedSponsor.description || "No description provided"}
-                </p>
-              </div>
-            </div>
+                {selectedSponsor.userId && (
+                  <DetailSection title="Account">
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <InfoItem
+                        icon={User}
+                        label="Account Name"
+                        value={selectedSponsor.userId.name}
+                      />
 
-            {/* Modal Actions */}
-            <div className="flex flex-col-reverse gap-3 border-t border-slate-700 bg-slate-800/80 p-4 sm:flex-row sm:justify-end sm:px-6">
-              <button
-                onClick={() => handleAction("reject")}
-                disabled={actionLoading}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-400 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <XCircle size={16} />
-                Reject
-              </button>
-
-              <button
-                onClick={() => handleAction("suspend")}
-                disabled={actionLoading}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-600 bg-slate-700/60 px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Ban size={16} />
-                Suspend
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  console.log("VERIFY BUTTON CLICKED", selectedSponsor?._id);
-
-                  handleAction("verify");
-                }}
-                disabled={actionLoading}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-4 py-3 text-sm font-semibold text-emerald-400 transition hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {actionLoading ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <CheckCircle size={16} />
+                      <InfoItem
+                        icon={Mail}
+                        label="Account Email"
+                        value={selectedSponsor.userId.email}
+                      />
+                    </div>
+                  </DetailSection>
                 )}
-                Verify
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t theme-border p-5 sm:flex-row sm:justify-end">
+              <button
+                onClick={() => setSelectedSponsor(null)}
+                className="rounded-lg border theme-border px-4 py-2.5 text-sm theme-text transition hover:bg-white/5"
+              >
+                Close
               </button>
+
+              {selectedSponsor.status !== "verified" &&
+                selectedSponsor.status !== "active" && (
+                  <button
+                    onClick={() => handleAction("verify")}
+                    disabled={actionLoading}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-600 disabled:opacity-50"
+                  >
+                    <ShieldCheck size={16} />
+                    Verify
+                  </button>
+                )}
+
+              {selectedSponsor.status !== "rejected" && (
+                <button
+                  onClick={() => handleAction("reject")}
+                  disabled={actionLoading}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-500/30 px-4 py-2.5 text-sm font-medium text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
+                >
+                  <XCircle size={16} />
+                  Reject
+                </button>
+              )}
+
+              {selectedSponsor.status !== "suspended" && (
+                <button
+                  onClick={() => handleAction("suspend")}
+                  disabled={actionLoading}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-orange-500/30 px-4 py-2.5 text-sm font-medium text-orange-400 transition hover:bg-orange-500/10 disabled:opacity-50"
+                >
+                  <Ban size={16} />
+                  Suspend
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -531,19 +581,3 @@ export const SponsorsManagementPage = () => {
   );
 };
 
-// Reusable dark-theme detail component
-const Detail = ({ icon: Icon, label, value }) => (
-  <div className="min-w-0 rounded-xl border border-slate-700/80 bg-slate-800/60 p-4">
-    <div className="flex items-center gap-2">
-      {Icon && <Icon size={14} className="shrink-0 text-slate-500" />}
-
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-        {label}
-      </p>
-    </div>
-
-    <p className="mt-2 break-words text-sm font-medium text-slate-200">
-      {value || "Not provided"}
-    </p>
-  </div>
-);

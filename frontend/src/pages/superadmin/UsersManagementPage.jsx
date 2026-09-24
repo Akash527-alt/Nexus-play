@@ -1,216 +1,575 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Users,
   Search,
-  Shield,
-  ShieldAlert,
-  UserCheck,
-  UserX,
-  Edit,
+  Users,
+  Eye,
+  RefreshCw,
+  XCircle,
   Mail,
+  Phone,
   Calendar,
+  GraduationCap,
+  CreditCard,
+  UserRound,
+  ShieldCheck,
 } from "lucide-react";
-import { toast } from "sonner";
 import { adminService } from "../../services/adminService";
-import { AdminTable } from "../../components/admin/AdminTable";
-import { StatusBadge } from "../../components/admin/StatusBadge";
-import { ConfirmModal } from "../../components/admin/ConfirmModal";
 
-export function UsersManagementPage() {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [roleFilter, setRoleFilter] = useState("all");
+const formatDate = (date) => {
+  if (!date) return "—";
 
-  const [confirmModal, setConfirmModal] = useState({
-    isOpen: false,
-    title: "",
-    message: "",
-    action: null,
-    isDestructive: false,
+  return new Date(date).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
   });
+};
 
-  const loadUsers = async () => {
+const formatDateTime = (date) => {
+  if (!date) return "—";
+
+  return new Date(date).toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const getInitials = (name) => {
+  if (!name) return "P";
+
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join("");
+};
+
+const InfoItem = ({ icon: Icon, label, value }) => (
+  <div className="flex gap-3">
+    <div className="mt-0.5 shrink-0 text-indigo-400">
+      <Icon size={17} />
+    </div>
+
+    <div className="min-w-0">
+      <p className="text-xs theme-subtext">{label}</p>
+
+      <p className="mt-1 break-words text-sm theme-text">{value || "—"}</p>
+    </div>
+  </div>
+);
+
+const DetailSection = ({ title, children }) => (
+  <div className="border-b theme-border pb-5 last:border-0 last:pb-0">
+    <h3 className="mb-4 text-sm font-semibold theme-text">{title}</h3>
+
+    {children}
+  </div>
+);
+
+export const UsersManagementPage  = () => {
+  const [players, setPlayers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+
+  const fetchPlayers = async (showRefresh = false) => {
     try {
-      setLoading(true);
-      const data = await adminService.getUsers();
-      setUsers(data);
+      if (showRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      setError("");
+
+      const response = await adminService.getPlayers();
+
+      setPlayers(response?.players || []);
+    } catch (err) {
+      setError(err?.response?.data?.message || "Failed to load players");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    loadUsers();
+    fetchPlayers();
   }, []);
 
-  const handleToggleStatus = (user) => {
-    const isSuspending = user.status === "active";
-    setConfirmModal({
-      isOpen: true,
-      title: isSuspending ? "Suspend User Account" : "Reactivate User Account",
-      message: isSuspending
-        ? `Are you sure you want to suspend ${user.name}? They will be locked out from competing and logging in.`
-        : `Reactivate account for ${user.name}? Their platform permissions will be restored.`,
-      isDestructive: isSuspending,
-      confirmLabel: isSuspending ? "Suspend User" : "Reactivate",
-      action: async () => {
-        const nextStatus = isSuspending ? "suspended" : "active";
-        const res = await adminService.updateUserStatus(user.id, nextStatus);
-        if (res.success) {
-          toast.success(`User ${user.name} is now ${nextStatus}`);
-          loadUsers();
-        }
-      },
-    });
-  };
-
-  const handleRoleChange = async (user, newRole) => {
+  const openPlayerDetails = async (player) => {
     try {
-      const res = await adminService.updateUserRole(user.id, newRole);
-      if (res.success) {
-        toast.success(`Updated ${user.name}'s role to ${newRole}`);
-        loadUsers();
-      }
+      setDetailsLoading(true);
+
+      const response = await adminService.getPlayer(player._id);
+
+      setSelectedPlayer(response?.player || player);
     } catch {
-      toast.error("Failed to update user role");
+      setSelectedPlayer(player);
+    } finally {
+      setDetailsLoading(false);
     }
   };
 
-  const filteredUsers = users.filter((u) => {
-    return roleFilter === "all" || u.role === roleFilter;
-  });
+  const filteredPlayers = useMemo(() => {
+    const value = search.trim().toLowerCase();
 
-  const columns = [
-    {
-      header: "User Identity",
-      accessor: "name",
-      render: (u) => (
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-indigo-600/20 text-indigo-400 font-extrabold flex items-center justify-center text-xs">
-            {u.avatar || u.name?.slice(0, 2).toUpperCase()}
-          </div>
-          <div>
-            <p className="font-bold theme-text leading-tight">{u.name}</p>
-            <p className="text-[11px] theme-subtext">{u.email}</p>
-          </div>
-        </div>
-      ),
-    },
-    {
-      header: "Role",
-      accessor: "role",
-      render: (u) => (
-        <select
-          value={u.role}
-          onChange={(e) => handleRoleChange(u, e.target.value)}
-          className="theme-input px-2 py-1 text-[11px] font-bold rounded-lg border theme-border outline-none cursor-pointer"
-        >
-          <option value="user">Participant (user)</option>
-          <option value="organizer">Organizer</option>
-          <option value="sponsor">Sponsor</option>
-          <option value="superadmin">Super Admin</option>
-        </select>
-      ),
-    },
-    {
-      header: "Account Status",
-      accessor: "status",
-      render: (u) => <StatusBadge status={u.status} size="sm" />,
-    },
-    {
-      header: "Joined Date",
-      accessor: "joinedDate",
-      render: (u) => (
-        <span className="text-xs theme-subtext font-medium">{u.joinedDate || "2026"}</span>
-      ),
-    },
-    {
-      header: "Tournaments",
-      accessor: "tournamentsJoined",
-      render: (u) => (
-        <span className="text-xs font-semibold theme-text">
-          {u.tournamentsJoined || 0} entered
-        </span>
-      ),
-    },
-    {
-      header: "Governance Actions",
-      className: "text-right",
-      render: (u) => (
-        <div className="flex items-center justify-end gap-2">
-          {u.role !== "superadmin" && (
-            <button
-              onClick={() => handleToggleStatus(u)}
-              className={`p-1.5 rounded-lg border transition cursor-pointer text-xs font-semibold ${
-                u.status === "active"
-                  ? "border-rose-500/30 text-rose-400 hover:bg-rose-500/10"
-                  : "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
-              }`}
-              title={u.status === "active" ? "Suspend Account" : "Reactivate Account"}
-            >
-              {u.status === "active" ? (
-                <UserX className="w-3.5 h-3.5" />
-              ) : (
-                <UserCheck className="w-3.5 h-3.5" />
-              )}
-            </button>
-          )}
-        </div>
-      ),
-    },
-  ];
+    if (!value) {
+      return players;
+    }
+
+    return players.filter((player) => {
+      const name = player?.name?.toLowerCase() || "";
+      const email = player?.email?.toLowerCase() || "";
+      const mobile = player?.mobileNumber?.toLowerCase() || "";
+      const college = player?.college?.toLowerCase() || "";
+      const collegeId = player?.collegeId?.toLowerCase() || "";
+
+      return (
+        name.includes(value) ||
+        email.includes(value) ||
+        mobile.includes(value) ||
+        college.includes(value) ||
+        collegeId.includes(value)
+      );
+    });
+  }, [players, search]);
+
+  const completedProfiles = players.filter(
+    (player) => player.isProfileComplete,
+  ).length;
+
+  const incompleteProfiles = players.length - completedProfiles;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold theme-text">Platform User Directory</h1>
-        <p className="text-xs md:text-sm theme-subtext">
-          Search, audit, and regulate user privileges, roles, and suspension states across all roles.
-        </p>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold theme-text">Players</h1>
+
+          <p className="mt-1 text-sm theme-subtext">
+            View registered players and their profile information.
+          </p>
+        </div>
+
+        <button
+          onClick={() => fetchPlayers(true)}
+          disabled={refreshing}
+          className="inline-flex items-center justify-center gap-2 rounded-lg border theme-border px-4 py-2 text-sm theme-text transition hover:bg-white/5 disabled:opacity-50"
+        >
+          <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+          Refresh
+        </button>
       </div>
 
-      {/* Role Filter Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        {["all", "user", "organizer", "sponsor", "superadmin"].map((r) => (
-          <button
-            key={r}
-            onClick={() => setRoleFilter(r)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold capitalize whitespace-nowrap transition cursor-pointer ${
-              roleFilter === r
-                ? "bg-rose-600 text-white shadow-xs"
-                : "theme-card border theme-border theme-subtext hover:theme-text"
-            }`}
-          >
-            {r === "all" ? "All Platform Users" : r}
-          </button>
-        ))}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="theme-card rounded-xl border theme-border p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs theme-subtext">Total Players</p>
+
+            <Users size={17} className="text-indigo-400" />
+          </div>
+
+          <p className="mt-2 text-xl font-bold theme-text">{players.length}</p>
+        </div>
+
+        <div className="theme-card rounded-xl border theme-border p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs theme-subtext">Complete Profiles</p>
+
+            <ShieldCheck size={17} className="text-emerald-400" />
+          </div>
+
+          <p className="mt-2 text-xl font-bold theme-text">
+            {completedProfiles}
+          </p>
+        </div>
+
+        <div className="theme-card rounded-xl border theme-border p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs theme-subtext">Incomplete Profiles</p>
+
+            <UserRound size={17} className="text-amber-400" />
+          </div>
+
+          <p className="mt-2 text-xl font-bold theme-text">
+            {incompleteProfiles}
+          </p>
+        </div>
       </div>
 
-      {/* Users Table */}
-      {loading ? (
-        <div className="p-12 text-center text-xs theme-subtext">Loading user records...</div>
-      ) : (
-        <AdminTable
-          columns={columns}
-          data={filteredUsers}
-          searchPlaceholder="Search users by name, email, or role..."
-          searchKey="name"
-        />
+      <div className="theme-card rounded-xl border theme-border p-4">
+        <div className="relative">
+          <Search
+            size={18}
+            className="absolute left-3 top-1/2 -translate-y-1/2 theme-subtext"
+          />
+
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name, email, college, college ID..."
+            className="theme-input w-full rounded-lg border py-2.5 pl-10 pr-4 text-sm outline-none"
+          />
+        </div>
+      </div>
+
+      {error && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </div>
       )}
 
-      {/* Confirm Modal */}
-      <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        confirmLabel={confirmModal.confirmLabel}
-        isDestructive={confirmModal.isDestructive}
-        onConfirm={confirmModal.action}
-        onClose={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
-      />
+      {loading ? (
+        <div className="theme-card rounded-xl border theme-border p-10 text-center">
+          <RefreshCw size={22} className="mx-auto animate-spin theme-subtext" />
+
+          <p className="mt-3 text-sm theme-subtext">Loading players...</p>
+        </div>
+      ) : filteredPlayers.length === 0 ? (
+        <div className="theme-card rounded-xl border theme-border p-10 text-center">
+          <Users size={32} className="mx-auto theme-subtext" />
+
+          <p className="mt-3 font-medium theme-text">No players found</p>
+
+          <p className="mt-1 text-sm theme-subtext">
+            Try changing your search.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="hidden overflow-hidden rounded-xl border theme-border lg:block">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b theme-border bg-white/[0.02]">
+                  <tr>
+                    <th className="px-5 py-4 text-left text-xs font-medium theme-subtext">
+                      Player
+                    </th>
+
+                    <th className="px-5 py-4 text-left text-xs font-medium theme-subtext">
+                      Email
+                    </th>
+
+                    <th className="px-5 py-4 text-left text-xs font-medium theme-subtext">
+                      College
+                    </th>
+
+                    <th className="px-5 py-4 text-left text-xs font-medium theme-subtext">
+                      College ID
+                    </th>
+
+                    <th className="px-5 py-4 text-left text-xs font-medium theme-subtext">
+                      Profile
+                    </th>
+
+                    <th className="px-5 py-4 text-left text-xs font-medium theme-subtext">
+                      Joined
+                    </th>
+
+                    <th className="px-5 py-4 text-right text-xs font-medium theme-subtext">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {filteredPlayers.map((player) => (
+                    <tr
+                      key={player._id}
+                      className="border-b theme-border last:border-b-0"
+                    >
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          {player.avatar?.url ? (
+                            <img
+                              src={player.avatar.url}
+                              alt={player.name}
+                              className="h-10 w-10 shrink-0 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-sm font-semibold text-indigo-400">
+                              {getInitials(player.name)}
+                            </div>
+                          )}
+
+                          <div className="min-w-0">
+                            <p className="max-w-[180px] truncate text-sm font-semibold theme-text">
+                              {player.name}
+                            </p>
+
+                            <p className="max-w-[180px] truncate text-xs theme-subtext">
+                              {player._id}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <p className="max-w-[220px] truncate text-sm theme-text">
+                          {player.email}
+                        </p>
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <p className="max-w-[180px] truncate text-sm theme-text">
+                          {player.college || "—"}
+                        </p>
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <p className="text-sm theme-text">
+                          {player.collegeId || "—"}
+                        </p>
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <span
+                          className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
+                            player.isProfileComplete
+                              ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-400"
+                              : "border-amber-400/20 bg-amber-400/10 text-amber-400"
+                          }`}
+                        >
+                          {player.isProfileComplete ? "Complete" : "Incomplete"}
+                        </span>
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <p className="text-sm theme-text">
+                          {formatDate(player.createdAt)}
+                        </p>
+                      </td>
+
+                      <td className="px-5 py-4 text-right">
+                        <button
+                          onClick={() => openPlayerDetails(player)}
+                          disabled={detailsLoading}
+                          className="inline-flex items-center gap-2 rounded-lg border theme-border px-3 py-2 text-sm theme-text transition hover:bg-white/5 disabled:opacity-50"
+                        >
+                          <Eye size={15} />
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:hidden">
+            {filteredPlayers.map((player) => (
+              <div
+                key={player._id}
+                className="theme-card rounded-xl border theme-border p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    {player.avatar?.url ? (
+                      <img
+                        src={player.avatar.url}
+                        alt={player.name}
+                        className="h-10 w-10 shrink-0 rounded-lg object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-sm font-semibold text-indigo-400">
+                        {getInitials(player.name)}
+                      </div>
+                    )}
+
+                    <div className="min-w-0">
+                      <h3 className="truncate text-sm font-semibold theme-text">
+                        {player.name}
+                      </h3>
+
+                      <p className="truncate text-xs theme-subtext">
+                        {player.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`shrink-0 rounded-full border px-2 py-1 text-[11px] ${
+                      player.isProfileComplete
+                        ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-400"
+                        : "border-amber-400/20 bg-amber-400/10 text-amber-400"
+                    }`}
+                  >
+                    {player.isProfileComplete ? "Complete" : "Incomplete"}
+                  </span>
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <InfoItem
+                    icon={GraduationCap}
+                    label="College"
+                    value={player.college}
+                  />
+
+                  <InfoItem
+                    icon={CreditCard}
+                    label="College ID"
+                    value={player.collegeId}
+                  />
+
+                  <InfoItem
+                    icon={Phone}
+                    label="Mobile"
+                    value={player.mobileNumber}
+                  />
+
+                  <InfoItem
+                    icon={Calendar}
+                    label="Joined"
+                    value={formatDate(player.createdAt)}
+                  />
+                </div>
+
+                <button
+                  onClick={() => openPlayerDetails(player)}
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border theme-border px-3 py-2 text-sm theme-text transition hover:bg-white/5"
+                >
+                  <Eye size={15} />
+                  View Details
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {selectedPlayer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="theme-card max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-2xl border theme-border shadow-2xl">
+            <div className="flex items-center justify-between border-b theme-border p-5">
+              <div className="flex min-w-0 items-center gap-3">
+                {selectedPlayer.avatar?.url ? (
+                  <img
+                    src={selectedPlayer.avatar.url}
+                    alt={selectedPlayer.name}
+                    className="h-11 w-11 shrink-0 rounded-xl object-cover"
+                  />
+                ) : (
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-sm font-semibold text-indigo-400">
+                    {getInitials(selectedPlayer.name)}
+                  </div>
+                )}
+
+                <div className="min-w-0">
+                  <h2 className="truncate text-lg font-semibold theme-text">
+                    {selectedPlayer.name}
+                  </h2>
+
+                  <p className="truncate text-xs theme-subtext">Player</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedPlayer(null)}
+                className="rounded-lg p-2 theme-subtext transition hover:bg-white/5 hover:text-white"
+              >
+                <XCircle size={20} />
+              </button>
+            </div>
+
+            <div className="max-h-[calc(90vh-80px)] overflow-y-auto p-5">
+              <div className="space-y-6">
+                <DetailSection title="Personal Information">
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <InfoItem
+                      icon={UserRound}
+                      label="Full Name"
+                      value={selectedPlayer.name}
+                    />
+
+                    <InfoItem
+                      icon={Mail}
+                      label="Email"
+                      value={selectedPlayer.email}
+                    />
+
+                    <InfoItem
+                      icon={Phone}
+                      label="Mobile Number"
+                      value={selectedPlayer.mobileNumber}
+                    />
+
+                    <InfoItem icon={ShieldCheck} label="Role" value="Player" />
+                  </div>
+                </DetailSection>
+
+                <DetailSection title="College Information">
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <InfoItem
+                      icon={GraduationCap}
+                      label="College"
+                      value={selectedPlayer.college}
+                    />
+
+                    <InfoItem
+                      icon={CreditCard}
+                      label="College ID"
+                      value={selectedPlayer.collegeId}
+                    />
+                  </div>
+                </DetailSection>
+
+                <DetailSection title="Account Information">
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <InfoItem
+                      icon={UserRound}
+                      label="Player ID"
+                      value={selectedPlayer._id}
+                    />
+
+                    <InfoItem
+                      icon={ShieldCheck}
+                      label="Profile Status"
+                      value={
+                        selectedPlayer.isProfileComplete
+                          ? "Complete"
+                          : "Incomplete"
+                      }
+                    />
+
+                    <InfoItem
+                      icon={Calendar}
+                      label="Joined"
+                      value={formatDateTime(selectedPlayer.createdAt)}
+                    />
+
+                    <InfoItem
+                      icon={Calendar}
+                      label="Last Updated"
+                      value={formatDateTime(selectedPlayer.updatedAt)}
+                    />
+                  </div>
+                </DetailSection>
+
+                <DetailSection title="Payment Information">
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <InfoItem
+                      icon={CreditCard}
+                      label="UPI ID"
+                      value={selectedPlayer.upiId}
+                    />
+                  </div>
+                </DetailSection>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
 
-export default UsersManagementPage;

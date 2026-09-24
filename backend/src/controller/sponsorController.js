@@ -6,9 +6,6 @@ import Payment from "../models/payment.js";
 import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
 import ErrorHandler from "../utils/ErrorHandler.js";
 
-// ============================================================
-// SPONSOR PROFILE
-// ============================================================
 
 // @route   GET /api/v1/sponsors/me
 // @desc    Get current logged in sponsor profile
@@ -32,8 +29,6 @@ export const getMySponsorProfile = catchAsyncErrors(
 );
 
 
-// @route   PUT /api/v1/sponsors/me
-// @desc    Create or update sponsor profile
 export const updateSponsorProfile = catchAsyncErrors(
   async (req, res, next) => {
 
@@ -173,12 +168,6 @@ export const updateSponsorProfile = catchAsyncErrors(
 );
 
 
-// ============================================================
-// SPONSORSHIP REQUEST
-// ============================================================
-
-// @route   POST /api/v1/sponsors/tournaments/:id/sponsors
-// @desc    Submit sponsorship request
 export const sponsorTournament = catchAsyncErrors(
   async (req, res, next) => {
 
@@ -340,12 +329,6 @@ export const sponsorTournament = catchAsyncErrors(
 );
 
 
-// ============================================================
-// SPONSOR'S OWN SPONSORSHIPS
-// ============================================================
-
-// @route   GET /api/v1/sponsors/sponsorships
-// @desc    Get all sponsorship requests of logged-in sponsor
 export const getMySponsorships = catchAsyncErrors(
   async (req, res, next) => {
 
@@ -369,12 +352,6 @@ export const getMySponsorships = catchAsyncErrors(
 );
 
 
-// ============================================================
-// TOURNAMENT SPONSORS
-// ============================================================
-
-// @route   GET /api/v1/sponsors/tournaments/:id/sponsors
-// @desc    Get approved/active sponsors of tournament
 export const getTournamentSponsors = catchAsyncErrors(
   async (req, res, next) => {
 
@@ -405,18 +382,6 @@ export const getTournamentSponsors = catchAsyncErrors(
   }
 );
 
-
-// ============================================================
-// ORGANIZER SPONSORSHIPS
-// ============================================================
-
-// NOTE:
-// We will update this function after you send the exact
-// Organizer model, so that we can safely restrict an organizer
-// to sponsorship requests belonging only to their tournaments.
-
-// @route   GET /api/v1/sponsors/organizer/sponsors
-// @desc    Get sponsorship requests for organizer
 export const getOrganizerSponsors = catchAsyncErrors(
   async (req, res, next) => {
 
@@ -467,12 +432,6 @@ export const getOrganizerSponsors = catchAsyncErrors(
 );
 
 
-// ============================================================
-// APPROVE / REJECT SPONSORSHIP
-// ============================================================
-
-// @route   PATCH /api/v1/sponsors/organizer/sponsors/:id/status
-// @desc    Approve or reject sponsorship
 export const updateSponsorshipStatus = catchAsyncErrors(
   async (req, res, next) => {
 
@@ -612,13 +571,6 @@ export const updateSponsorshipStatus = catchAsyncErrors(
   }
 );
 
-
-// ============================================================
-// ALL VERIFIED SPONSORS
-// ============================================================
-
-// @route   GET /api/v1/sponsors
-// @desc    Get all sponsors
 export const getAllSponsors = catchAsyncErrors(
   async (req, res, next) => {
 

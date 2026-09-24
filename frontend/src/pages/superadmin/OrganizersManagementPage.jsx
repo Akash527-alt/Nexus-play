@@ -1,79 +1,42 @@
-
 import React, { useEffect, useState } from "react";
 import {
   Building2,
+  Search,
+  Eye,
   CheckCircle,
   XCircle,
-  Eye,
+  ShieldAlert,
   Mail,
   Phone,
   MapPin,
-  ShieldCheck,
-  CalendarDays,
-  Trophy,
-  UserRound,
-  CreditCard,
+  User,
   FileText,
-  AlertCircle,
-  Loader2,
+  CreditCard,
+  X,
+  Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
-
 import { adminService } from "../../services/adminService";
-import { AdminTable } from "../../components/admin/AdminTable";
-import { StatusBadge } from "../../components/admin/StatusBadge";
-import { ConfirmModal } from "../../components/admin/ConfirmModal";
 
 export function OrganizersManagementPage() {
   const [organizers, setOrganizers] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [selectedOrganizer, setSelectedOrganizer] = useState(null);
-  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  const [confirmModal, setConfirmModal] = useState({
-    isOpen: false,
-    title: "",
-    message: "",
-    confirmLabel: "",
-    action: null,
-    isDestructive: false,
-  });
-
-  // =====================================================
-  // LOAD ALL ORGANIZERS
-  // =====================================================
-
-  const loadData = async () => {
+  const loadOrganizers = async () => {
     try {
       setLoading(true);
 
-      const data = await adminService.getOrganizers();
+      const response = await adminService.getOrganizers();
 
-      const formattedOrganizers = (data || []).map((org) => ({
-        ...org,
-
-        id: org._id,
-
-        contactName: org.userId?.name || org.representativeName || "N/A",
-
-        email: org.contactEmail || org.userId?.email || "N/A",
-
-        phone: org.contactPhone || "N/A",
-
-        status: org.verificationStatus || "unknown",
-
-        tournamentsHosted: org.tournamentsHosted || 0,
-
-        createdAt: org.createdAt
-          ? new Date(org.createdAt).toLocaleDateString()
-          : "N/A",
-      }));
-
-      setOrganizers(formattedOrganizers);
+      setOrganizers(response.organizers || []);
     } catch (error) {
       toast.error(
-        error?.response?.data?.message || "Failed to load organizers"
+        error?.response?.data?.message || "Failed to load organizers",
       );
     } finally {
       setLoading(false);
@@ -81,568 +44,618 @@ export function OrganizersManagementPage() {
   };
 
   useEffect(() => {
-    loadData();
+    loadOrganizers();
   }, []);
 
-  // =====================================================
-  // LOAD SINGLE ORGANIZER DETAILS
-  // =====================================================
-
-  const handleViewDetails = async (organizer) => {
+  const handleViewOrganizer = async (id) => {
     try {
-      setDetailsLoading(true);
+      setDetailLoading(true);
 
-      const data = await adminService.getOrganizerDetails(organizer.id);
+      const response = await adminService.getOrganizer(id);
 
-      if (data.success) {
-        setSelectedOrganizer(data.organizer);
-      }
+      setSelectedOrganizer(response.organizer);
     } catch (error) {
       toast.error(
-        error?.response?.data?.message ||
-          "Failed to load organizer details"
+        error?.response?.data?.message || "Failed to load organizer details",
       );
     } finally {
-      setDetailsLoading(false);
+      setDetailLoading(false);
     }
   };
 
-  // =====================================================
-  // CLOSE DETAILS MODAL
-  // =====================================================
+  const handleAction = async (action, id) => {
+    try {
+      setActionLoading(true);
 
-  const closeDetailsModal = () => {
-    setSelectedOrganizer(null);
+      let response;
+
+      if (action === "verify") {
+        response = await adminService.verifyOrganizer(id);
+      }
+
+      if (action === "reject") {
+        response = await adminService.rejectOrganizer(id);
+      }
+
+      if (action === "suspend") {
+        response = await adminService.suspendOrganizer(id);
+      }
+
+      toast.success(response?.message || "Organizer status updated");
+
+      await loadOrganizers();
+
+      if (selectedOrganizer?._id === id) {
+        const updated = await adminService.getOrganizer(id);
+        setSelectedOrganizer(updated.organizer);
+      }
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message || "Failed to update organizer",
+      );
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  // =====================================================
-  // UPDATE ORGANIZER STATUS
-  // =====================================================
+  const filteredOrganizers = organizers.filter((organizer) => {
+    const searchValue = search.toLowerCase().trim();
 
-  const handleUpdateStatus = (organizer, nextStatus) => {
-    const isDestructive =
-      nextStatus === "suspended" || nextStatus === "rejected";
+    const matchesSearch =
+      !searchValue ||
+      organizer.organizationName?.toLowerCase().includes(searchValue) ||
+      organizer.organizationType?.toLowerCase().includes(searchValue) ||
+      organizer.contactEmail?.toLowerCase().includes(searchValue) ||
+      organizer.representativeName?.toLowerCase().includes(searchValue);
 
-    const actionLabels = {
-      verified: "Verify Organizer",
-      rejected: "Reject Organizer",
-      suspended: "Suspend Organizer",
-    };
+    const matchesStatus =
+      statusFilter === "all" || organizer.verificationStatus === statusFilter;
 
-    const confirmLabels = {
-      verified: "Grant Verified Status",
-      rejected: "Reject Organizer",
-      suspended: "Suspend Organizer",
-    };
+    return matchesSearch && matchesStatus;
+  });
 
-    setConfirmModal({
-      isOpen: true,
+  const getStatusClass = (status) => {
+    if (status === "verified") {
+      return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
+    }
 
-      title: actionLabels[nextStatus],
+    if (status === "rejected") {
+      return "bg-rose-500/15 text-rose-400 border-rose-500/30";
+    }
 
-      message: `Change ${organizer.organizationName} status to ${nextStatus}?`,
+    if (status === "suspended") {
+      return "bg-amber-500/15 text-amber-400 border-amber-500/30";
+    }
 
-      confirmLabel: confirmLabels[nextStatus],
+    return "bg-indigo-500/15 text-indigo-400 border-indigo-500/30";
+  };
 
-      isDestructive,
+  const formatDate = (date) => {
+    if (!date) return "-";
 
-      action: async () => {
-        try {
-          let response;
-
-          if (nextStatus === "verified") {
-            response = await adminService.verifyOrganizer(
-              organizer._id
-            );
-          }
-
-          if (nextStatus === "rejected") {
-            response = await adminService.rejectOrganizer(
-              organizer._id
-            );
-          }
-
-          if (nextStatus === "suspended") {
-            response = await adminService.suspendOrganizer(
-              organizer._id
-            );
-          }
-
-          if (response?.success) {
-            toast.success(
-              `${organizer.organizationName} is now ${nextStatus}`
-            );
-
-            setConfirmModal((prev) => ({
-              ...prev,
-              isOpen: false,
-            }));
-
-            setSelectedOrganizer(null);
-
-            await loadData();
-          }
-        } catch (error) {
-          toast.error(
-            error?.response?.data?.message ||
-              `Failed to ${nextStatus} organizer`
-          );
-        }
-      },
+    return new Date(date).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
     });
   };
 
-  // =====================================================
-  // TABLE COLUMNS
-  // =====================================================
-
-  const columns = [
-    {
-      header: "Organization Name",
-      accessor: "organizationName",
-
-      render: (org) => (
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-purple-600/20 text-purple-400 font-extrabold flex items-center justify-center text-xs">
-            <Building2 className="w-4 h-4" />
-          </div>
-
-          <div>
-            <p className="font-bold theme-text leading-tight">
-              {org.organizationName}
-            </p>
-
-            <p className="text-[11px] theme-subtext">
-              {org.organizationType}
-            </p>
-          </div>
-        </div>
-      ),
-    },
-
-    {
-      header: "Contact Lead",
-      accessor: "contactName",
-
-      render: (org) => (
-        <div>
-          <p className="font-semibold theme-text leading-tight">
-            {org.contactName}
-          </p>
-
-          <p className="text-[11px] theme-subtext flex items-center gap-1 mt-0.5">
-            <Mail className="w-3 h-3" />
-            {org.email}
-          </p>
-        </div>
-      ),
-    },
-
-    {
-      header: "Verification",
-      accessor: "status",
-
-      render: (org) => (
-        <StatusBadge status={org.status} size="sm" />
-      ),
-    },
-
-    {
-      header: "Tournaments",
-      accessor: "tournamentsHosted",
-
-      render: (org) => (
-        <span className="text-xs font-semibold theme-text flex items-center gap-1">
-          <Trophy className="w-3 h-3 text-amber-400" />
-          <span>{org.tournamentsHosted || 0} hosted</span>
-        </span>
-      ),
-    },
-
-    {
-      header: "Registered Date",
-      accessor: "createdAt",
-
-      render: (org) => (
-        <span className="text-xs theme-subtext">
-          {org.createdAt}
-        </span>
-      ),
-    },
-
-    {
-      header: "KYC Action",
-      className: "text-right",
-
-      render: (org) => (
-        <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={() => handleViewDetails(org)}
-            className="flex items-center gap-1 px-2.5 py-1 bg-indigo-600/15 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-600 hover:text-white rounded-lg text-xs font-bold transition cursor-pointer"
-          >
-            <Eye className="w-3.5 h-3.5" />
-            <span>Review</span>
-          </button>
-
-          {org.status !== "verified" && (
-            <button
-              onClick={() => handleUpdateStatus(org, "verified")}
-              className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600 hover:text-white rounded-lg text-xs font-bold transition cursor-pointer"
-            >
-              <CheckCircle className="w-3.5 h-3.5" />
-              <span>Verify</span>
-            </button>
-          )}
-
-          {org.status !== "rejected" && (
-            <button
-              onClick={() => handleUpdateStatus(org, "rejected")}
-              className="flex items-center gap-1 px-2.5 py-1 bg-orange-600/15 text-orange-400 border border-orange-500/30 hover:bg-orange-600 hover:text-white rounded-lg text-xs font-bold transition cursor-pointer"
-            >
-              <XCircle className="w-3.5 h-3.5" />
-              <span>Reject</span>
-            </button>
-          )}
-
-          {org.status !== "suspended" && (
-            <button
-              onClick={() => handleUpdateStatus(org, "suspended")}
-              className="flex items-center gap-1 px-2.5 py-1 bg-rose-600/15 text-rose-400 border border-rose-500/30 hover:bg-rose-600 hover:text-white rounded-lg text-xs font-bold transition cursor-pointer"
-            >
-              <XCircle className="w-3.5 h-3.5" />
-              <span>Suspend</span>
-            </button>
-          )}
-        </div>
-      ),
-    },
-  ];
-
-  // =====================================================
-  // RENDER
-  // =====================================================
+  const statusCounts = {
+    all: organizers.length,
+    pending: organizers.filter((item) => item.verificationStatus === "pending")
+      .length,
+    verified: organizers.filter(
+      (item) => item.verificationStatus === "verified",
+    ).length,
+    rejected: organizers.filter(
+      (item) => item.verificationStatus === "rejected",
+    ).length,
+    suspended: organizers.filter(
+      (item) => item.verificationStatus === "suspended",
+    ).length,
+  };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold theme-text">
-          Tournament Organizers & KYC Oversight
+          Organizer KYC Management
         </h1>
 
-        <p className="text-xs md:text-sm theme-subtext">
-          Audit credentials, review organizer details, and govern host
-          organizations on NexusPlay.
+        <p className="text-xs md:text-sm theme-subtext mt-1">
+          Review organizer profiles, KYC information, and verification status.
         </p>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {[
+          { key: "all", label: "All" },
+          { key: "pending", label: "Pending" },
+          { key: "verified", label: "Verified" },
+          { key: "rejected", label: "Rejected" },
+          { key: "suspended", label: "Suspended" },
+        ].map((item) => (
+          <button
+            key={item.key}
+            onClick={() => setStatusFilter(item.key)}
+            className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+              statusFilter === item.key
+                ? "bg-rose-600 border-rose-600 text-white"
+                : "theme-card theme-border theme-subtext hover:theme-text"
+            }`}
+          >
+            <p className="text-[10px] uppercase tracking-wider font-bold">
+              {item.label}
+            </p>
+
+            <p className="text-xl font-black mt-1">{statusCounts[item.key]}</p>
+          </button>
+        ))}
+      </div>
+
+      <div className="theme-card border theme-border rounded-2xl p-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 theme-subtext" />
+
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search organization, representative, email, or type..."
+            className="theme-input w-full pl-10 pr-4 py-2.5 rounded-xl border theme-border text-xs outline-none focus:ring-2 focus:ring-rose-500/20"
+          />
+        </div>
       </div>
 
       {loading ? (
-        <div className="p-12 text-center text-xs theme-subtext">
-          Loading organizers...
+        <div className="theme-card border theme-border rounded-2xl p-12 text-center">
+          <p className="text-xs theme-subtext">Loading organizer records...</p>
+        </div>
+      ) : filteredOrganizers.length === 0 ? (
+        <div className="theme-card border theme-border rounded-2xl p-12 text-center">
+          <Building2 className="w-8 h-8 mx-auto theme-subtext mb-3" />
+
+          <p className="text-sm font-bold theme-text">No organizers found</p>
+
+          <p className="text-xs theme-subtext mt-1">
+            Try changing the search or verification filter.
+          </p>
         </div>
       ) : (
-        <AdminTable
-          columns={columns}
-          data={organizers}
-          searchPlaceholder="Search organizers by org name or contact..."
-          searchKey="organizationName"
-        />
+        <div className="theme-card border theme-border rounded-2xl overflow-hidden">
+          <div className="hidden lg:block overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b theme-border">
+                  <th className="text-left px-5 py-3 text-[10px] uppercase tracking-wider theme-subtext font-bold">
+                    Organization
+                  </th>
+
+                  <th className="text-left px-5 py-3 text-[10px] uppercase tracking-wider theme-subtext font-bold">
+                    Representative
+                  </th>
+
+                  <th className="text-left px-5 py-3 text-[10px] uppercase tracking-wider theme-subtext font-bold">
+                    Contact
+                  </th>
+
+                  <th className="text-left px-5 py-3 text-[10px] uppercase tracking-wider theme-subtext font-bold">
+                    Status
+                  </th>
+
+                  <th className="text-left px-5 py-3 text-[10px] uppercase tracking-wider theme-subtext font-bold">
+                    Joined
+                  </th>
+
+                  <th className="text-right px-5 py-3 text-[10px] uppercase tracking-wider theme-subtext font-bold">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filteredOrganizers.map((organizer) => (
+                  <tr
+                    key={organizer._id}
+                    className="border-b theme-border last:border-b-0 hover:bg-rose-500/5 transition"
+                  >
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center shrink-0">
+                          <Building2 className="w-4 h-4" />
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold theme-text truncate max-w-[220px]">
+                            {organizer.organizationName}
+                          </p>
+
+                          <p className="text-[11px] theme-subtext capitalize">
+                            {organizer.organizationType?.replaceAll("_", " ")}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="px-5 py-4">
+                      <p className="text-xs font-semibold theme-text">
+                        {organizer.representativeName || "-"}
+                      </p>
+                    </td>
+
+                    <td className="px-5 py-4">
+                      <p className="text-xs theme-text">
+                        {organizer.contactEmail}
+                      </p>
+
+                      <p className="text-[11px] theme-subtext mt-0.5">
+                        {organizer.contactPhone || "-"}
+                      </p>
+                    </td>
+
+                    <td className="px-5 py-4">
+                      <span
+                        className={`inline-flex px-2.5 py-1 rounded-full border text-[10px] font-bold capitalize ${getStatusClass(
+                          organizer.verificationStatus,
+                        )}`}
+                      >
+                        {organizer.verificationStatus}
+                      </span>
+                    </td>
+
+                    <td className="px-5 py-4">
+                      <span className="text-xs theme-subtext">
+                        {formatDate(organizer.createdAt)}
+                      </span>
+                    </td>
+
+                    <td className="px-5 py-4">
+                      <div className="flex items-center justify-end">
+                        <button
+                          onClick={() => handleViewOrganizer(organizer._id)}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border theme-border theme-text hover:bg-rose-500/10 hover:text-rose-400 text-[11px] font-bold transition cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          View
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="lg:hidden divide-y theme-border">
+            {filteredOrganizers.map((organizer) => (
+              <div key={organizer._id} className="p-4 space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center shrink-0">
+                      <Building2 className="w-5 h-5" />
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold theme-text truncate">
+                        {organizer.organizationName}
+                      </p>
+
+                      <p className="text-[11px] theme-subtext capitalize">
+                        {organizer.organizationType?.replaceAll("_", " ")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`px-2 py-1 rounded-full border text-[9px] font-bold capitalize shrink-0 ${getStatusClass(
+                      organizer.verificationStatus,
+                    )}`}
+                  >
+                    {organizer.verificationStatus}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider theme-subtext font-bold">
+                      Representative
+                    </p>
+
+                    <p className="text-xs theme-text mt-1">
+                      {organizer.representativeName || "-"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider theme-subtext font-bold">
+                      Email
+                    </p>
+
+                    <p className="text-xs theme-text mt-1 break-all">
+                      {organizer.contactEmail}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider theme-subtext font-bold">
+                      Phone
+                    </p>
+
+                    <p className="text-xs theme-text mt-1">
+                      {organizer.contactPhone || "-"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider theme-subtext font-bold">
+                      Joined
+                    </p>
+
+                    <p className="text-xs theme-text mt-1">
+                      {formatDate(organizer.createdAt)}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handleViewOrganizer(organizer._id)}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border theme-border theme-text hover:bg-rose-500/10 hover:text-rose-400 text-xs font-bold transition cursor-pointer"
+                >
+                  <Eye className="w-4 h-4" />
+                  View Organizer
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
-      {/* =====================================================
-          ORGANIZER DETAILS MODAL
-      ===================================================== */}
-
-      {selectedOrganizer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto theme-card border theme-border rounded-2xl shadow-2xl">
-            {/* Modal Header */}
-
-            <div className="flex items-center justify-between p-6 border-b theme-border">
-              <div>
-                <h2 className="text-xl font-bold theme-text">
-                  Organizer KYC Review
-                </h2>
-
-                <p className="text-xs theme-subtext mt-1">
-                  Review all submitted information before taking action.
+      {(selectedOrganizer || detailLoading) && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="theme-card border theme-border rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl">
+            {detailLoading ? (
+              <div className="p-12 text-center">
+                <p className="text-xs theme-subtext">
+                  Loading organizer details...
                 </p>
               </div>
+            ) : (
+              <>
+                <div className="flex items-start justify-between gap-4 p-5 md:p-6 border-b theme-border">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-11 h-11 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center shrink-0">
+                      <Building2 className="w-5 h-5" />
+                    </div>
 
-              <button
-                onClick={closeDetailsModal}
-                className="p-2 rounded-lg theme-hover theme-text cursor-pointer"
-              >
-                <XCircle className="w-5 h-5" />
-              </button>
-            </div>
+                    <div className="min-w-0">
+                      <h2 className="text-lg font-bold theme-text truncate">
+                        {selectedOrganizer.organizationName}
+                      </h2>
 
-            {/* Modal Content */}
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <span className="text-[11px] theme-subtext capitalize">
+                          {selectedOrganizer.organizationType?.replaceAll(
+                            "_",
+                            " ",
+                          )}
+                        </span>
 
-            <div className="p-6 space-y-6">
-              {/* Organization Details */}
+                        <span
+                          className={`px-2 py-0.5 rounded-full border text-[9px] font-bold capitalize ${getStatusClass(
+                            selectedOrganizer.verificationStatus,
+                          )}`}
+                        >
+                          {selectedOrganizer.verificationStatus}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-              <section>
-                <div className="flex items-center gap-2 mb-3">
-                  <Building2 className="w-4 h-4 text-purple-400" />
-
-                  <h3 className="font-bold theme-text">
-                    Organization Details
-                  </h3>
+                  <button
+                    onClick={() => setSelectedOrganizer(null)}
+                    className="p-2 rounded-lg theme-icon-box border theme-border theme-subtext hover:theme-text cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <DetailItem
-                    label="Organization Name"
-                    value={selectedOrganizer.organizationName}
-                  />
+                <div className="p-5 md:p-6 overflow-y-auto max-h-[calc(90vh-150px)] space-y-5">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider theme-subtext mb-3">
+                      Organization Information
+                    </h3>
 
-                  <DetailItem
-                    label="Organization Type"
-                    value={selectedOrganizer.organizationType}
-                  />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <InfoCard
+                        icon={Building2}
+                        label="Organization Name"
+                        value={selectedOrganizer.organizationName}
+                      />
 
-                  <DetailItem
-                    label="Organizer ID"
-                    value={selectedOrganizer.organizerId}
-                  />
+                      <InfoCard
+                        icon={FileText}
+                        label="Organization Type"
+                        value={selectedOrganizer.organizationType?.replaceAll(
+                          "_",
+                          " ",
+                        )}
+                      />
 
-                  <DetailItem
-                    label="Verification Status"
-                    value={selectedOrganizer.verificationStatus}
-                  />
+                      <InfoCard
+                        icon={MapPin}
+                        label="Address"
+                        value={selectedOrganizer.address}
+                      />
+
+                      <InfoCard
+                        icon={FileText}
+                        label="Description"
+                        value={selectedOrganizer.description || "Not provided"}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider theme-subtext mb-3">
+                      Representative Information
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <InfoCard
+                        icon={User}
+                        label="Representative"
+                        value={
+                          selectedOrganizer.representativeName || "Not provided"
+                        }
+                      />
+
+                      <InfoCard
+                        icon={Mail}
+                        label="Contact Email"
+                        value={selectedOrganizer.contactEmail}
+                      />
+
+                      <InfoCard
+                        icon={Phone}
+                        label="Contact Phone"
+                        value={selectedOrganizer.contactPhone || "Not provided"}
+                      />
+
+                      <InfoCard
+                        icon={FileText}
+                        label="Organizer ID"
+                        value={selectedOrganizer.organizerId}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider theme-subtext mb-3">
+                      KYC Information
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <InfoCard
+                        icon={CreditCard}
+                        label="Aadhaar Number"
+                        value={
+                          selectedOrganizer.aadhaarNumber || "Not provided"
+                        }
+                      />
+
+                      <InfoCard
+                        icon={CreditCard}
+                        label="PAN Number"
+                        value={selectedOrganizer.panNumber || "Not provided"}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider theme-subtext mb-3">
+                      Account Information
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <InfoCard
+                        icon={User}
+                        label="User ID"
+                        value={
+                          typeof selectedOrganizer.userId === "object"
+                            ? selectedOrganizer.userId?._id
+                            : selectedOrganizer.userId
+                        }
+                      />
+
+                      <InfoCard
+                        icon={Mail}
+                        label="User Email"
+                        value={
+                          typeof selectedOrganizer.userId === "object"
+                            ? selectedOrganizer.userId?.email
+                            : "Not available"
+                        }
+                      />
+
+                      <InfoCard
+                        icon={Calendar}
+                        label="Created"
+                        value={formatDate(selectedOrganizer.createdAt)}
+                      />
+
+                      <InfoCard
+                        icon={Calendar}
+                        label="Last Updated"
+                        value={formatDate(selectedOrganizer.updatedAt)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                    {selectedOrganizer.verificationStatus !== "verified" && (
+                      <button
+                        onClick={() =>
+                          handleAction("verify", selectedOrganizer._id)
+                        }
+                        disabled={actionLoading}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition cursor-pointer disabled:opacity-50"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        Verify Organizer
+                      </button>
+                    )}
+
+                    {selectedOrganizer.verificationStatus !== "rejected" && (
+                      <button
+                        onClick={() =>
+                          handleAction("reject", selectedOrganizer._id)
+                        }
+                        disabled={actionLoading}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition cursor-pointer disabled:opacity-50"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Reject
+                      </button>
+                    )}
+
+                    {selectedOrganizer.verificationStatus !== "suspended" && (
+                      <button
+                        onClick={() =>
+                          handleAction("suspend", selectedOrganizer._id)
+                        }
+                        disabled={actionLoading}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition cursor-pointer disabled:opacity-50"
+                      >
+                        <ShieldAlert className="w-4 h-4" />
+                        Suspend
+                      </button>
+                    )}
+                  </div>
                 </div>
-
-                <DetailItem
-                  label="Description"
-                  value={selectedOrganizer.description}
-                  fullWidth
-                />
-              </section>
-
-              {/* Contact Details */}
-
-              <section>
-                <div className="flex items-center gap-2 mb-3">
-                  <UserRound className="w-4 h-4 text-indigo-400" />
-
-                  <h3 className="font-bold theme-text">
-                    Contact Details
-                  </h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <DetailItem
-                    label="Account Holder"
-                    value={selectedOrganizer.userId?.name}
-                  />
-
-                  <DetailItem
-                    label="Representative Name"
-                    value={selectedOrganizer.representativeName}
-                  />
-
-                  <DetailItem
-                    label="Contact Email"
-                    value={
-                      selectedOrganizer.contactEmail ||
-                      selectedOrganizer.userId?.email
-                    }
-                    icon={<Mail className="w-3.5 h-3.5" />}
-                  />
-
-                  <DetailItem
-                    label="Contact Phone"
-                    value={selectedOrganizer.contactPhone}
-                    icon={<Phone className="w-3.5 h-3.5" />}
-                  />
-                </div>
-              </section>
-
-              {/* Address */}
-
-              <section>
-                <div className="flex items-center gap-2 mb-3">
-                  <MapPin className="w-4 h-4 text-rose-400" />
-
-                  <h3 className="font-bold theme-text">
-                    Registered Address
-                  </h3>
-                </div>
-
-                <div className="rounded-xl border theme-border p-4">
-                  <p className="text-sm theme-text whitespace-pre-wrap">
-                    {selectedOrganizer.address || "Not provided"}
-                  </p>
-                </div>
-              </section>
-
-              {/* KYC Details */}
-
-              <section>
-                <div className="flex items-center gap-2 mb-3">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-
-                  <h3 className="font-bold theme-text">
-                    KYC Documents
-                  </h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <DetailItem
-                    label="Aadhaar Number"
-                    value={selectedOrganizer.aadhaarNumber}
-                    icon={<CreditCard className="w-3.5 h-3.5" />}
-                  />
-
-                  <DetailItem
-                    label="PAN Number"
-                    value={selectedOrganizer.panNumber}
-                    icon={<FileText className="w-3.5 h-3.5" />}
-                  />
-                </div>
-
-                <div className="mt-3 flex items-start gap-2 rounded-xl bg-amber-500/10 border border-amber-500/20 p-3">
-                  <AlertCircle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
-
-                  <p className="text-xs text-amber-300">
-                    Verify that the submitted KYC information is valid
-                    before granting organizer verification.
-                  </p>
-                </div>
-              </section>
-
-              {/* Dates */}
-
-              <section>
-                <div className="flex items-center gap-2 mb-3">
-                  <CalendarDays className="w-4 h-4 text-cyan-400" />
-
-                  <h3 className="font-bold theme-text">
-                    Registration Information
-                  </h3>
-                </div>
-
-                <DetailItem
-                  label="Registered On"
-                  value={
-                    selectedOrganizer.createdAt
-                      ? new Date(
-                          selectedOrganizer.createdAt
-                        ).toLocaleString()
-                      : "Not available"
-                  }
-                />
-              </section>
-            </div>
-
-            {/* Modal Footer */}
-
-            <div className="flex flex-wrap items-center justify-end gap-3 p-6 border-t theme-border">
-              <button
-                onClick={closeDetailsModal}
-                className="px-4 py-2 rounded-xl border theme-border theme-text text-xs font-bold theme-hover cursor-pointer"
-              >
-                Close
-              </button>
-
-              {selectedOrganizer.verificationStatus !== "verified" && (
-                <button
-                  onClick={() =>
-                    handleUpdateStatus(selectedOrganizer, "verified")
-                  }
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  Verify
-                </button>
-              )}
-
-              {selectedOrganizer.verificationStatus !== "rejected" && (
-                <button
-                  onClick={() =>
-                    handleUpdateStatus(selectedOrganizer, "rejected")
-                  }
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold cursor-pointer"
-                >
-                  <XCircle className="w-4 h-4" />
-                  Reject
-                </button>
-              )}
-
-              {selectedOrganizer.verificationStatus !== "suspended" && (
-                <button
-                  onClick={() =>
-                    handleUpdateStatus(selectedOrganizer, "suspended")
-                  }
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer"
-                >
-                  <XCircle className="w-4 h-4" />
-                  Suspend
-                </button>
-              )}
-            </div>
+              </>
+            )}
           </div>
         </div>
       )}
-
-      {/* Details Loading Indicator */}
-
-      {detailsLoading && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
-          <div className="flex items-center gap-2 rounded-xl theme-card border theme-border px-5 py-4">
-            <Loader2 className="w-5 h-5 animate-spin theme-text" />
-
-            <span className="text-sm theme-text">
-              Loading organizer details...
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Confirmation Modal */}
-
-      <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        confirmLabel={confirmModal.confirmLabel}
-        isDestructive={confirmModal.isDestructive}
-        onConfirm={confirmModal.action}
-        onClose={() =>
-          setConfirmModal((prev) => ({
-            ...prev,
-            isOpen: false,
-          }))
-        }
-      />
     </div>
   );
 }
 
-// =====================================================
-// REUSABLE DETAIL ITEM
-// =====================================================
-
-function DetailItem({ label, value, icon, fullWidth = false }) {
+function InfoCard({ icon: Icon, label, value }) {
   return (
-    <div className={fullWidth ? "mt-4" : ""}>
-      <p className="text-[11px] theme-subtext font-semibold mb-1">
-        {label}
-      </p>
+    <div className="p-3.5 rounded-xl border theme-border theme-icon-box">
+      <div className="flex items-center gap-2">
+        <Icon className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
 
-      <div className="flex items-center gap-2 rounded-xl border theme-border p-3">
-        {icon && (
-          <span className="theme-subtext shrink-0">
-            {icon}
-          </span>
-        )}
-
-        <p className="text-sm theme-text break-all">
-          {value || "Not provided"}
+        <p className="text-[10px] uppercase tracking-wider theme-subtext font-bold">
+          {label}
         </p>
       </div>
+
+      <p className="text-xs font-semibold theme-text mt-2 break-words">
+        {value || "-"}
+      </p>
     </div>
   );
 }
 
-export default OrganizersManagementPage;

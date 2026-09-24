@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Search,
-  CreditCard,
+  Handshake,
   Eye,
   RefreshCw,
   XCircle,
@@ -9,20 +9,18 @@ import {
   Trophy,
   IndianRupee,
   Calendar,
-  CheckCircle2,
-  Clock3,
-  XCircle as FailedIcon,
-  RotateCcw,
+  User,
   FileText,
 } from "lucide-react";
 import { adminService } from "../../services/adminService";
 
-const paymentStatusStyles = {
-  not_required: "text-slate-400 bg-slate-400/10 border-slate-400/20",
+const statusStyles = {
   pending: "text-amber-400 bg-amber-400/10 border-amber-400/20",
-  paid: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
-  failed: "text-red-400 bg-red-400/10 border-red-400/20",
-  refunded: "text-purple-400 bg-purple-400/10 border-purple-400/20",
+  approved: "text-blue-400 bg-blue-400/10 border-blue-400/20",
+  payment_pending: "text-orange-400 bg-orange-400/10 border-orange-400/20",
+  paid: "text-cyan-400 bg-cyan-400/10 border-cyan-400/20",
+  completed: "text-purple-400 bg-purple-400/10 border-purple-400/20",
+  rejected: "text-red-400 bg-red-400/10 border-red-400/20",
 };
 
 const formatStatus = (status) =>
@@ -40,47 +38,47 @@ const formatDate = (date) => {
   });
 };
 
-const formatDateTime = (date) => {
-  if (!date) return "—";
-
-  return new Date(date).toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
-
 const formatCurrency = (amount) => {
   if (amount === undefined || amount === null) return "—";
 
   return `₹${Number(amount).toLocaleString("en-IN")}`;
 };
 
-const getSponsorName = (payment) => {
-  if (payment.sponsorId?.companyName) {
-    return payment.sponsorId.companyName;
+const getSponsorName = (sponsorship) => {
+  if (sponsorship.sponsor?.companyName) {
+    return sponsorship.sponsor.companyName;
   }
 
-  if (payment.sponsorId?.brandName) {
-    return payment.sponsorId.brandName;
+  if (sponsorship.sponsor?.brandName) {
+    return sponsorship.sponsor.brandName;
   }
 
-  return payment.sponsorUserId?.name || "Unknown Sponsor";
+  if (sponsorship.sponsorId?.companyName) {
+    return sponsorship.sponsorId.companyName;
+  }
+
+  if (sponsorship.sponsorId?.brandName) {
+    return sponsorship.sponsorId.brandName;
+  }
+
+  return "Unknown Sponsor";
 };
 
-const getTournamentName = (payment) => {
-  return (
-    payment.tournamentId?.title ||
-    payment.tournamentTitle ||
-    "Unknown Tournament"
-  );
+const getTournamentName = (sponsorship) => {
+  if (sponsorship.tournament?.title) {
+    return sponsorship.tournament.title;
+  }
+
+  if (sponsorship.tournamentId?.title) {
+    return sponsorship.tournamentId.title;
+  }
+
+  return "Unknown Tournament";
 };
 
 const InfoItem = ({ icon: Icon, label, value }) => (
   <div className="flex gap-3">
-    <div className="mt-0.5 shrink-0 text-indigo-400">
+    <div className="mt-0.5 text-indigo-400">
       <Icon size={17} />
     </div>
 
@@ -100,17 +98,16 @@ const DetailSection = ({ title, children }) => (
   </div>
 );
 
-export const PaymentsManagementPage = () => {
-  const [payments, setPayments] = useState([]);
+export const SponsorshipsPage = () => {
+  const [sponsorships, setSponsorships] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedPayment, setSelectedPayment] = useState(null);
-  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [selectedSponsorship, setSelectedSponsorship] = useState(null);
 
-  const fetchPayments = async (showRefresh = false) => {
+  const fetchSponsorships = async (showRefresh = false) => {
     try {
       if (showRefresh) {
         setRefreshing(true);
@@ -120,11 +117,11 @@ export const PaymentsManagementPage = () => {
 
       setError("");
 
-      const response = await adminService.getPayments();
+      const response = await adminService.getSponsorships();
 
-      setPayments(response?.payments || []);
+      setSponsorships(response?.sponsorships || []);
     } catch (err) {
-      setError(err?.response?.data?.message || "Failed to load payments");
+      setError(err?.response?.data?.message || "Failed to load sponsorships");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -132,91 +129,55 @@ export const PaymentsManagementPage = () => {
   };
 
   useEffect(() => {
-    fetchPayments();
+    fetchSponsorships();
   }, []);
 
-  const openPaymentDetails = async (payment) => {
-    try {
-      setDetailsLoading(true);
-
-      const response = await adminService.getPayment(payment._id);
-
-      setSelectedPayment(response?.payment || payment);
-    } catch {
-      setSelectedPayment(payment);
-    } finally {
-      setDetailsLoading(false);
-    }
-  };
-
-  const filteredPayments = useMemo(() => {
+  const filteredSponsorships = useMemo(() => {
     const value = search.trim().toLowerCase();
 
-    return payments.filter((payment) => {
-      const sponsorName = getSponsorName(payment).toLowerCase();
-      const tournamentName = getTournamentName(payment).toLowerCase();
-      const transactionId = payment.transactionId?.toLowerCase() || "";
+    return sponsorships.filter((sponsorship) => {
+      const sponsorName = getSponsorName(sponsorship).toLowerCase();
+
+      const tournamentName = getTournamentName(sponsorship).toLowerCase();
 
       const matchesSearch =
         !value ||
         sponsorName.includes(value) ||
         tournamentName.includes(value) ||
-        transactionId.includes(value);
+        sponsorship.message?.toLowerCase().includes(value) ||
+        sponsorship.requirements?.toLowerCase().includes(value);
 
       const matchesStatus =
-        statusFilter === "all" || payment.paymentStatus === statusFilter;
+        statusFilter === "all" || sponsorship.status === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
-  }, [payments, search, statusFilter]);
-
-  const totalAmount = useMemo(
-    () =>
-      payments.reduce(
-        (total, payment) => total + Number(payment.amount || 0),
-        0,
-      ),
-    [payments],
-  );
-
-  const paidAmount = useMemo(
-    () =>
-      payments
-        .filter((payment) => payment.paymentStatus === "paid")
-        .reduce((total, payment) => total + Number(payment.amount || 0), 0),
-    [payments],
-  );
-
-  const pendingAmount = useMemo(
-    () =>
-      payments
-        .filter((payment) => payment.paymentStatus === "pending")
-        .reduce((total, payment) => total + Number(payment.amount || 0), 0),
-    [payments],
-  );
+  }, [sponsorships, search, statusFilter]);
 
   const statusFilters = [
     ["All", "all"],
     ["Pending", "pending"],
+    ["Approved", "approved"],
+    ["Payment Pending", "payment_pending"],
     ["Paid", "paid"],
-    ["Failed", "failed"],
-    ["Refunded", "refunded"],
+    ["Completed", "completed"],
+    ["Rejected", "rejected"],
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold theme-text">Payments</h1>
+          <h1 className="text-2xl font-bold theme-text">Sponsorships</h1>
 
           <p className="mt-1 text-sm theme-subtext">
-            Monitor sponsorship payments, transactions and payment status across
+            Monitor sponsorship requests, approvals and payment status across
             the platform.
           </p>
         </div>
 
         <button
-          onClick={() => fetchPayments(true)}
+          onClick={() => fetchSponsorships(true)}
           disabled={refreshing}
           className="inline-flex items-center justify-center gap-2 rounded-lg border theme-border px-4 py-2 text-sm theme-text transition hover:bg-white/5 disabled:opacity-50"
         >
@@ -225,59 +186,31 @@ export const PaymentsManagementPage = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <div className="theme-card rounded-xl border theme-border p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs theme-subtext">Total Payments</p>
-            <CreditCard size={17} className="text-indigo-400" />
-          </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+        {statusFilters.map(([label, value]) => {
+          const count =
+            value === "all"
+              ? sponsorships.length
+              : sponsorships.filter(
+                  (sponsorship) => sponsorship.status === value,
+                ).length;
 
-          <p className="mt-2 text-xl font-bold theme-text">{payments.length}</p>
-        </div>
+          return (
+            <button
+              key={value}
+              onClick={() => setStatusFilter(value)}
+              className={`rounded-xl border p-4 text-left transition ${
+                statusFilter === value
+                  ? "border-indigo-500/50 bg-indigo-500/10"
+                  : "theme-card theme-border hover:bg-white/5"
+              }`}
+            >
+              <p className="text-xs theme-subtext">{label}</p>
 
-        <div className="theme-card rounded-xl border theme-border p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs theme-subtext">Pending</p>
-            <Clock3 size={17} className="text-amber-400" />
-          </div>
-
-          <p className="mt-2 text-xl font-bold theme-text">
-            {
-              payments.filter((payment) => payment.paymentStatus === "pending")
-                .length
-            }
-          </p>
-        </div>
-
-        <div className="theme-card rounded-xl border theme-border p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs theme-subtext">Paid</p>
-            <CheckCircle2 size={17} className="text-emerald-400" />
-          </div>
-
-          <p className="mt-2 text-xl font-bold theme-text">
-            {
-              payments.filter((payment) => payment.paymentStatus === "paid")
-                .length
-            }
-          </p>
-        </div>
-
-        <div className="theme-card rounded-xl border theme-border p-4">
-          <p className="text-xs theme-subtext">Total Amount</p>
-
-          <p className="mt-2 text-xl font-bold theme-text">
-            {formatCurrency(totalAmount)}
-          </p>
-        </div>
-
-        <div className="theme-card rounded-xl border theme-border p-4">
-          <p className="text-xs theme-subtext">Paid Amount</p>
-
-          <p className="mt-2 text-xl font-bold text-emerald-400">
-            {formatCurrency(paidAmount)}
-          </p>
-        </div>
+              <p className="mt-1 text-xl font-bold theme-text">{count}</p>
+            </button>
+          );
+        })}
       </div>
 
       <div className="theme-card rounded-xl border theme-border p-4">
@@ -291,34 +224,10 @@ export const PaymentsManagementPage = () => {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search sponsor, tournament, transaction..."
+            placeholder="Search sponsor, tournament, requirements..."
             className="theme-input w-full rounded-lg border py-2.5 pl-10 pr-4 text-sm outline-none"
           />
         </div>
-      </div>
-
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {statusFilters.map(([label, value]) => {
-          const count =
-            value === "all"
-              ? payments.length
-              : payments.filter((payment) => payment.paymentStatus === value)
-                  .length;
-
-          return (
-            <button
-              key={value}
-              onClick={() => setStatusFilter(value)}
-              className={`shrink-0 rounded-lg border px-4 py-2 text-sm transition ${
-                statusFilter === value
-                  ? "border-indigo-500/50 bg-indigo-500/10 text-indigo-400"
-                  : "theme-border theme-subtext hover:bg-white/5"
-              }`}
-            >
-              {label} ({count})
-            </button>
-          );
-        })}
       </div>
 
       {error && (
@@ -331,16 +240,16 @@ export const PaymentsManagementPage = () => {
         <div className="theme-card rounded-xl border theme-border p-10 text-center">
           <RefreshCw size={22} className="mx-auto animate-spin theme-subtext" />
 
-          <p className="mt-3 text-sm theme-subtext">Loading payments...</p>
+          <p className="mt-3 text-sm theme-subtext">Loading sponsorships...</p>
         </div>
-      ) : filteredPayments.length === 0 ? (
+      ) : filteredSponsorships.length === 0 ? (
         <div className="theme-card rounded-xl border theme-border p-10 text-center">
-          <CreditCard size={32} className="mx-auto theme-subtext" />
+          <Handshake size={32} className="mx-auto theme-subtext" />
 
-          <p className="mt-3 font-medium theme-text">No payments found</p>
+          <p className="mt-3 font-medium theme-text">No sponsorships found</p>
 
           <p className="mt-1 text-sm theme-subtext">
-            Try changing the search or payment status filter.
+            Try changing the search or status filter.
           </p>
         </div>
       ) : (
@@ -363,15 +272,11 @@ export const PaymentsManagementPage = () => {
                     </th>
 
                     <th className="px-5 py-4 text-left text-xs font-medium theme-subtext">
-                      Transaction
+                      Date
                     </th>
 
                     <th className="px-5 py-4 text-left text-xs font-medium theme-subtext">
                       Status
-                    </th>
-
-                    <th className="px-5 py-4 text-left text-xs font-medium theme-subtext">
-                      Paid At
                     </th>
 
                     <th className="px-5 py-4 text-right text-xs font-medium theme-subtext">
@@ -381,9 +286,9 @@ export const PaymentsManagementPage = () => {
                 </thead>
 
                 <tbody>
-                  {filteredPayments.map((payment) => (
+                  {filteredSponsorships.map((sponsorship) => (
                     <tr
-                      key={payment._id}
+                      key={sponsorship._id}
                       className="border-b theme-border last:border-b-0"
                     >
                       <td className="px-5 py-4">
@@ -393,12 +298,12 @@ export const PaymentsManagementPage = () => {
                           </div>
 
                           <div className="min-w-0">
-                            <p className="max-w-[180px] truncate text-sm font-semibold theme-text">
-                              {getSponsorName(payment)}
+                            <p className="truncate text-sm font-semibold theme-text">
+                              {getSponsorName(sponsorship)}
                             </p>
 
-                            <p className="max-w-[180px] truncate text-xs theme-subtext">
-                              {payment.sponsorId?.industry ||
+                            <p className="truncate text-xs theme-subtext">
+                              {sponsorship.sponsor?.industry ||
                                 "Corporate Sponsor"}
                             </p>
                           </div>
@@ -406,45 +311,38 @@ export const PaymentsManagementPage = () => {
                       </td>
 
                       <td className="px-5 py-4">
-                        <p className="max-w-[200px] truncate text-sm theme-text">
-                          {getTournamentName(payment)}
+                        <p className="max-w-[220px] truncate text-sm theme-text">
+                          {getTournamentName(sponsorship)}
                         </p>
                       </td>
 
                       <td className="px-5 py-4">
                         <p className="text-sm font-medium theme-text">
-                          {formatCurrency(payment.amount)}
+                          {formatCurrency(sponsorship.amount)}
                         </p>
                       </td>
 
                       <td className="px-5 py-4">
-                        <p className="max-w-[160px] truncate text-xs theme-subtext">
-                          {payment.transactionId || "Not available"}
+                        <p className="text-sm theme-text">
+                          {formatDate(sponsorship.createdAt)}
                         </p>
                       </td>
 
                       <td className="px-5 py-4">
                         <span
                           className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
-                            paymentStatusStyles[payment.paymentStatus] ||
+                            statusStyles[sponsorship.status] ||
                             "theme-border theme-text"
                           }`}
                         >
-                          {formatStatus(payment.paymentStatus)}
+                          {formatStatus(sponsorship.status)}
                         </span>
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <p className="text-sm theme-text">
-                          {formatDate(payment.paidAt)}
-                        </p>
                       </td>
 
                       <td className="px-5 py-4 text-right">
                         <button
-                          onClick={() => openPaymentDetails(payment)}
-                          disabled={detailsLoading}
-                          className="inline-flex items-center gap-2 rounded-lg border theme-border px-3 py-2 text-sm theme-text transition hover:bg-white/5 disabled:opacity-50"
+                          onClick={() => setSelectedSponsorship(sponsorship)}
+                          className="inline-flex items-center gap-2 rounded-lg border theme-border px-3 py-2 text-sm theme-text transition hover:bg-white/5"
                         >
                           <Eye size={15} />
                           View
@@ -458,35 +356,35 @@ export const PaymentsManagementPage = () => {
           </div>
 
           <div className="grid gap-4 lg:hidden">
-            {filteredPayments.map((payment) => (
+            {filteredSponsorships.map((sponsorship) => (
               <div
-                key={payment._id}
+                key={sponsorship._id}
                 className="theme-card rounded-xl border theme-border p-4"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400">
-                      <CreditCard size={18} />
+                      <Handshake size={18} />
                     </div>
 
                     <div className="min-w-0">
                       <h3 className="truncate text-sm font-semibold theme-text">
-                        {getSponsorName(payment)}
+                        {getSponsorName(sponsorship)}
                       </h3>
 
                       <p className="truncate text-xs theme-subtext">
-                        {getTournamentName(payment)}
+                        {getTournamentName(sponsorship)}
                       </p>
                     </div>
                   </div>
 
                   <span
                     className={`shrink-0 rounded-full border px-2 py-1 text-[11px] ${
-                      paymentStatusStyles[payment.paymentStatus] ||
+                      statusStyles[sponsorship.status] ||
                       "theme-border theme-text"
                     }`}
                   >
-                    {formatStatus(payment.paymentStatus)}
+                    {formatStatus(sponsorship.status)}
                   </span>
                 </div>
 
@@ -494,30 +392,30 @@ export const PaymentsManagementPage = () => {
                   <InfoItem
                     icon={IndianRupee}
                     label="Amount"
-                    value={formatCurrency(payment.amount)}
+                    value={formatCurrency(sponsorship.amount)}
                   />
 
                   <InfoItem
                     icon={Calendar}
-                    label="Paid At"
-                    value={formatDate(payment.paidAt)}
+                    label="Requested"
+                    value={formatDate(sponsorship.createdAt)}
                   />
 
                   <InfoItem
                     icon={Trophy}
                     label="Tournament"
-                    value={getTournamentName(payment)}
+                    value={getTournamentName(sponsorship)}
                   />
 
                   <InfoItem
-                    icon={CreditCard}
-                    label="Transaction"
-                    value={payment.transactionId || "Not available"}
+                    icon={Building2}
+                    label="Sponsor"
+                    value={getSponsorName(sponsorship)}
                   />
                 </div>
 
                 <button
-                  onClick={() => openPaymentDetails(payment)}
+                  onClick={() => setSelectedSponsorship(sponsorship)}
                   className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border theme-border px-3 py-2 text-sm theme-text transition hover:bg-white/5"
                 >
                   <Eye size={15} />
@@ -529,28 +427,28 @@ export const PaymentsManagementPage = () => {
         </>
       )}
 
-      {selectedPayment && (
+      {selectedSponsorship && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
           <div className="theme-card max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-2xl border theme-border shadow-2xl">
             <div className="flex items-center justify-between border-b theme-border p-5">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400">
-                  <CreditCard size={20} />
+                  <Handshake size={20} />
                 </div>
 
                 <div className="min-w-0">
                   <h2 className="truncate text-lg font-semibold theme-text">
-                    {getSponsorName(selectedPayment)}
+                    {getSponsorName(selectedSponsorship)}
                   </h2>
 
                   <p className="truncate text-xs theme-subtext">
-                    {getTournamentName(selectedPayment)}
+                    {getTournamentName(selectedSponsorship)}
                   </p>
                 </div>
               </div>
 
               <button
-                onClick={() => setSelectedPayment(null)}
+                onClick={() => setSelectedSponsorship(null)}
                 className="rounded-lg p-2 theme-subtext transition hover:bg-white/5 hover:text-white"
               >
                 <XCircle size={20} />
@@ -559,42 +457,36 @@ export const PaymentsManagementPage = () => {
 
             <div className="max-h-[calc(90vh-80px)] overflow-y-auto p-5">
               <div className="space-y-6">
-                <DetailSection title="Payment Information">
+                <DetailSection title="Sponsorship Information">
                   <div className="grid gap-5 sm:grid-cols-2">
                     <InfoItem
                       icon={Building2}
                       label="Sponsor"
-                      value={getSponsorName(selectedPayment)}
+                      value={getSponsorName(selectedSponsorship)}
                     />
 
                     <InfoItem
                       icon={Trophy}
                       label="Tournament"
-                      value={getTournamentName(selectedPayment)}
+                      value={getTournamentName(selectedSponsorship)}
                     />
 
                     <InfoItem
                       icon={IndianRupee}
-                      label="Amount"
-                      value={formatCurrency(selectedPayment.amount)}
-                    />
-
-                    <InfoItem
-                      icon={CreditCard}
-                      label="Payment Status"
-                      value={formatStatus(selectedPayment.paymentStatus)}
-                    />
-
-                    <InfoItem
-                      icon={FileText}
-                      label="Transaction ID"
-                      value={selectedPayment.transactionId || "Not available"}
+                      label="Sponsorship Amount"
+                      value={formatCurrency(selectedSponsorship.amount)}
                     />
 
                     <InfoItem
                       icon={Calendar}
-                      label="Paid At"
-                      value={formatDateTime(selectedPayment.paidAt)}
+                      label="Request Date"
+                      value={formatDate(selectedSponsorship.createdAt)}
+                    />
+
+                    <InfoItem
+                      icon={Handshake}
+                      label="Status"
+                      value={formatStatus(selectedSponsorship.status)}
                     />
                   </div>
                 </DetailSection>
@@ -604,44 +496,31 @@ export const PaymentsManagementPage = () => {
                     <InfoItem
                       icon={Building2}
                       label="Company"
-                      value={selectedPayment.sponsorId?.companyName}
+                      value={selectedSponsorship.sponsorId?.companyName}
                     />
 
                     <InfoItem
                       icon={Building2}
                       label="Brand"
-                      value={selectedPayment.sponsorId?.brandName}
+                      value={selectedSponsorship.sponsorId?.brandName}
                     />
 
                     <InfoItem
                       icon={Building2}
                       label="Industry"
-                      value={selectedPayment.sponsorId?.industry}
+                      value={selectedSponsorship.sponsorId?.industry}
                     />
 
                     <InfoItem
-                      icon={Building2}
-                      label="Contact Email"
-                      value={selectedPayment.sponsorId?.contactEmail}
+                      icon={User}
+                      label="Representative"
+                      value={selectedSponsorship.sponsorId?.representativeName}
                     />
                   </div>
                 </DetailSection>
 
-                <DetailSection title="Sponsorship Details">
+                <DetailSection title="Request Details">
                   <div className="space-y-5">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <FileText size={17} className="text-indigo-400" />
-
-                        <p className="text-xs theme-subtext">Requirements</p>
-                      </div>
-
-                      <p className="mt-2 whitespace-pre-wrap text-sm theme-text">
-                        {selectedPayment.requirements ||
-                          "No requirements provided"}
-                      </p>
-                    </div>
-
                     <div>
                       <div className="flex items-center gap-2">
                         <FileText size={17} className="text-indigo-400" />
@@ -650,16 +529,29 @@ export const PaymentsManagementPage = () => {
                       </div>
 
                       <p className="mt-2 whitespace-pre-wrap text-sm theme-text">
-                        {selectedPayment.message || "No message provided"}
+                        {selectedSponsorship.message || "No message provided"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <FileText size={17} className="text-indigo-400" />
+
+                        <p className="text-xs theme-subtext">Requirements</p>
+                      </div>
+
+                      <p className="mt-2 whitespace-pre-wrap text-sm theme-text">
+                        {selectedSponsorship.requirements ||
+                          "No requirements provided"}
                       </p>
                     </div>
                   </div>
                 </DetailSection>
 
-                {selectedPayment.rejectionReason && (
+                {selectedSponsorship.rejectionReason && (
                   <DetailSection title="Rejection">
                     <p className="whitespace-pre-wrap text-sm text-red-400">
-                      {selectedPayment.rejectionReason}
+                      {selectedSponsorship.rejectionReason}
                     </p>
                   </DetailSection>
                 )}
@@ -669,13 +561,13 @@ export const PaymentsManagementPage = () => {
                     <InfoItem
                       icon={Calendar}
                       label="Created"
-                      value={formatDateTime(selectedPayment.createdAt)}
+                      value={formatDate(selectedSponsorship.createdAt)}
                     />
 
                     <InfoItem
                       icon={Calendar}
                       label="Last Updated"
-                      value={formatDateTime(selectedPayment.updatedAt)}
+                      value={formatDate(selectedSponsorship.updatedAt)}
                     />
                   </div>
                 </DetailSection>
