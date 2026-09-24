@@ -1,289 +1,125 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Lock, Mail, User, Gamepad2, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import {
+  Gamepad2,
+  CalendarDays,
+  Handshake,
+  ArrowRight,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import loginBg from "../../assets/landing/login-bg.png";
 
-import { useAuth } from "../../context/AuthContext";
+const roles = [
+  {
+    title: "Player",
+    description: "Compete in tournaments and showcase your skills.",
+    icon: Gamepad2,
+    path: "/register/player",
+    iconClass: "bg-indigo-500/15 text-indigo-400",
+  },
+  {
+    title: "Organizer",
+    description: "Host and manage esports tournaments.",
+    icon: CalendarDays,
+    path: "/register/organizer",
+    iconClass: "bg-cyan-500/15 text-cyan-400",
+  },
+  {
+    title: "Sponsor",
+    description: "Support tournaments and connect with the community.",
+    icon: Handshake,
+    path: "/register/sponsor",
+    iconClass: "bg-purple-500/15 text-purple-400",
+  },
+];
 
 export function RegisterPage() {
-  const navigate = useNavigate();
-  const { register } = useAuth();
-
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  });
-
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const { name, email, password, confirmPassword } = formData;
-
-    if (!name || !email || !password || !confirmPassword) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
-
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const data = await register({
-        name,
-        email,
-        password,
-      });
-
-      if (!data?.success) {
-        toast.error(data?.message || "Registration failed");
-        return;
-      }
-
-      toast.success("Account created successfully");
-
-      navigate("/participant/dashboard", {
-        replace: true,
-      });
-    } catch (error) {
-      const message =
-        error?.response?.data?.message || "Unable to create account";
-
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-[#070B1A] text-white flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-md">
-        {/* Branding */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600 mb-4 shadow-lg shadow-indigo-600/20">
-            <Gamepad2 className="w-7 h-7 text-white" />
+    <div className="min-h-screen bg-[#171C22] text-white flex items-center justify-center p-4 sm:p-6">
+      <div className="w-full max-w-5xl overflow-hidden rounded-2xl border border-white/10 bg-[#050A18] shadow-2xl">
+        <div className="grid min-h-[520px] md:grid-cols-[34%_66%]">
+          <div className="relative min-h-[250px] overflow-hidden md:min-h-[520px]">
+            <img
+              src={loginBg}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover object-center"
+            />
+
+            <div className="absolute inset-0 bg-gradient-to-t from-[#050A18] via-[#050A18]/35 to-transparent" />
+
+            <div className="relative flex h-full flex-col justify-end p-6 sm:p-8">
+              <div className="mb-3 flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600">
+                  <Gamepad2 className="h-4 w-4 text-white" />
+                </div>
+
+                <span className="text-sm font-bold">
+                  Nexus<span className="text-indigo-400">Play</span>
+                </span>
+              </div>
+
+              <h1 className="text-2xl font-black sm:text-3xl">
+                Join NexusPlay
+              </h1>
+
+              <p className="mt-2 text-[11px] leading-5 text-slate-300 sm:text-xs">
+                How do you want to participate?
+              </p>
+            </div>
           </div>
 
-          <h1 className="text-3xl font-bold tracking-tight">
-            Nexus<span className="text-indigo-500">Play</span>
-          </h1>
+          <div className="flex flex-col justify-center p-5 sm:p-8 md:p-10">
+            <div className="mx-auto w-full max-w-2xl md:max-w-3xl">
+              <div className="grid gap-3 sm:grid-cols-3 md:gap-5">
+                {roles.map((role) => {
+                  const Icon = role.icon;
 
-          <p className="text-sm text-slate-400 mt-2">
-            Join the tournament community
-          </p>
-        </div>
+                  return (
+                    <div
+                      key={role.title}
+                      className="group rounded-xl border border-white/10 bg-[#091122] p-4 transition duration-300 hover:-translate-y-1 hover:border-indigo-500/40 sm:p-5 md:p-7"
+                    >
+                      <div
+                        className={`mx-auto flex h-11 w-11 items-center justify-center rounded-xl ${role.iconClass} md:h-14 md:w-14`}
+                      >
+                        <Icon className="h-5 w-5 md:h-6 md:w-6" />
+                      </div>
 
-        {/* Registration Card */}
-        <div className="bg-[#0D1326] border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="mb-7">
-            <h2 className="text-xl font-bold">Create your account</h2>
+                      <h2 className="mt-4 text-center text-sm font-bold sm:text-base md:mt-5 md:text-lg">
+                        {role.title}
+                      </h2>
 
-            <p className="text-sm text-slate-400 mt-1">
-              Register as a player on NexusPlay
-            </p>
-          </div>
+                      <p className="mt-2 min-h-[42px] text-center text-[9px] leading-4 text-slate-400 sm:text-[10px] md:min-h-[48px] md:text-sm md:leading-5">
+                        {role.description}
+                      </p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name */}
-            <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-slate-300 mb-2"
-              >
-                Full Name
-              </label>
+                      <Link
+                        to={role.path}
+                        className="mt-4 flex items-center justify-center gap-1.5 rounded-md bg-indigo-600 px-3 py-2 text-[9px] font-semibold text-white transition hover:bg-indigo-500 sm:text-[10px] md:mt-5 md:py-2.5 md:text-sm"
+                      >
+                        Register as {role.title}
+                        <ArrowRight className="h-3 w-3 md:h-4 md:w-4" />
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
 
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Enter your name"
-                  autoComplete="name"
-                  className="w-full bg-[#080D1D] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                />
+              <div className="mt-6 text-center">
+                <p className="text-[10px] text-slate-500 sm:text-xs">
+                  Already have an account?
+                  <Link
+                    to="/login"
+                    className="ml-1 font-semibold text-indigo-400 hover:text-indigo-300"
+                  >
+                    Sign In
+                  </Link>
+                </p>
               </div>
             </div>
-
-            {/* Email */}
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-slate-300 mb-2"
-              >
-                Email
-              </label>
-
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="Enter your email"
-                  autoComplete="email"
-                  className="w-full bg-[#080D1D] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-slate-300 mb-2"
-              >
-                Password
-              </label>
-
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="Create a password"
-                  autoComplete="new-password"
-                  className="w-full bg-[#080D1D] border border-slate-700 rounded-xl pl-10 pr-11 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label
-                htmlFor="confirmPassword"
-                className="block text-sm font-medium text-slate-300 mb-2"
-              >
-                Confirm Password
-              </label>
-
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  placeholder="Confirm your password"
-                  autoComplete="new-password"
-                  className="w-full bg-[#080D1D] border border-slate-700 rounded-xl pl-10 pr-11 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword((prev) => !prev)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed rounded-xl py-3 mt-2 text-sm font-semibold transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/10"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Creating account...
-                </>
-              ) : (
-                "Create account"
-              )}
-            </button>
-          </form>
-
-          {/* Organizer Registration */}
-          <div className="mt-6 p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5">
-            <p className="text-sm font-semibold text-white">
-              Want to organize tournaments?
-            </p>
-
-            <p className="text-xs text-slate-400 mt-1 mb-3">
-              Create an organizer account and manage your own tournaments.
-            </p>
-
-            <Link
-              to="/register/organizer"
-              className="text-sm text-indigo-400 font-semibold hover:text-indigo-300 transition"
-            >
-              Create Organizer Account →
-            </Link>
-          </div>
-
-          {/* Login */}
-          <div className="mt-6 pt-6 border-t border-slate-800 text-center">
-            <p className="text-sm text-slate-400">
-              Already have an account?{" "}
-              <Link
-                to="/login"
-                className="text-indigo-400 font-semibold hover:text-indigo-300"
-              >
-                Login
-              </Link>
-            </p>
           </div>
         </div>
-
-        <p className="text-center text-xs text-slate-600 mt-6">
-          © {new Date().getFullYear()} NexusPlay Esports
-        </p>
       </div>
     </div>
   );
 }
+
+export default RegisterPage;

@@ -17,6 +17,7 @@ import { SuperAdminLayout } from "./components/layout/SuperAdminLayout";
 // Auth Pages
 import { LoginPage } from "./pages/auth/LoginPage";
 import { RegisterPage } from "./pages/auth/RegisterPage.jsx";
+import { PlayerRegisterPage } from "./pages/auth/PlayerRegisterPage.jsx";
 import { OrganizerRegisterPage } from "./pages/auth/OrganizerRegisterPage";
 import { OrganizerProfilePage } from "./pages/auth/OrganizerProfilePage";
 import { SponsorRegisterPage } from "./pages/auth/SponsorRegisterPage";
@@ -58,12 +59,14 @@ import { SponsorsManagementPage } from "./pages/superadmin/SponsorsManagementPag
 import { PaymentsManagementPage } from "./pages/superadmin/PaymentsManagementPage";
 import { ReportsPage } from "./pages/superadmin/ReportsPage";
 import { PlatformSettingsPage } from "./pages/superadmin/PlatformSettingsPage";
-import {SponsorshipsPage} from "./pages/superadmin/SponsorshipsPage";
+import { SponsorshipsPage } from "./pages/superadmin/SponsorshipsPage";
 
 // Protection & Error Handling
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { UnauthorizedPage } from "./pages/UnauthorizedPage.jsx";
+
+import { LandingPage } from "./pages/LandingPage.jsx";
 
 // Fallback history
 const HistoryPage = () => (
@@ -89,6 +92,7 @@ function App() {
                 path="/password/reset/:token"
                 element={<ResetPasswordPage />}
               />
+              <Route path="/register/player" element={<PlayerRegisterPage />} />
 
               <Route
                 path="/register/organizer"
@@ -281,7 +285,7 @@ function App() {
               />
 
               {/* ROOT & FALLBACK */}
-              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/" element={<LandingPage />} />
               <Route path="/unauthorized" element={<UnauthorizedPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
