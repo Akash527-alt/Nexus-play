@@ -64,14 +64,6 @@ export function SponsorRegisterPage() {
       });
 
       if (data?.success) {
-        // Save initial local sponsor profile sync
-        await sponsorService.updateProfile({
-          companyName,
-          industry: formData.industry,
-          website: formData.website,
-          email,
-        });
-
         toast.success("Sponsor account created successfully!");
         navigate("/sponsor/dashboard", { replace: true });
       } else {

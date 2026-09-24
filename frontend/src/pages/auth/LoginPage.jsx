@@ -95,24 +95,7 @@ export function LoginPage() {
             </p>
           </div>
 
-          {/* Super Admin Notice Pill */}
-          <div className="mb-5 p-3 rounded-xl bg-[#080D1D] border border-slate-800 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2 text-slate-400">
-              <ShieldAlert className="w-4 h-4 text-rose-400" />
-              <span>
-                Super Admin: <span className="font-mono text-rose-400">admin@nexusplay.gg</span>
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() =>
-                setFormData({ email: "admin@nexusplay.gg", password: "admin123" })
-              }
-              className="text-[11px] font-bold text-rose-400 hover:underline cursor-pointer"
-            >
-              Fill Admin
-            </button>
-          </div>
+      
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
@@ -213,19 +196,19 @@ export function LoginPage() {
                 to="/register"
                 className="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition"
               >
-                🎮 Player
+                Player
               </Link>
               <Link
                 to="/register/organizer"
                 className="px-2.5 py-1 rounded-lg bg-indigo-950/60 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-900/50 transition"
               >
-                🏆 Organizer
+                 Organizer
               </Link>
               <Link
                 to="/register/sponsor"
                 className="px-2.5 py-1 rounded-lg bg-purple-950/60 border border-purple-500/30 text-purple-400 hover:bg-purple-900/50 transition"
               >
-                🤝 Sponsor (Make Sponsor ID)
+                Sponsor (Make Sponsor ID)
               </Link>
             </div>
           </div>

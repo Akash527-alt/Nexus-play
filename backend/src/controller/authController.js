@@ -13,40 +13,40 @@ export const registerUser = catchAsyncErrors(async (req, res, next) => {
 
     const existingUser = await User.findOne({ email });
 
-    if(existingUser){
+    if (existingUser) {
         return res.status(400).json({
-            success:false,
-            message:"User already exists"
+            success: false,
+            message: "User already exists"
         });
     }
 
-    const user = await  User.create({name,email,password});
+    const user = await User.create({ name, email, password });
 
-    sendToken(user,201,res);
+    sendToken(user, 201, res);
 
 })
 
-export const loginUser = catchAsyncErrors(async(req,res,next) =>{
-    const {email,password}  = req.body;
+export const loginUser = catchAsyncErrors(async (req, res, next) => {
+    const { email, password } = req.body;
 
-    if(!email || !password){
-        return next(new ErrorHandler("Enter User and password !",401));
+    if (!email || !password) {
+        return next(new ErrorHandler("Enter User and password !", 401));
     }
 
-    const user = await User.findOne({email}).select("+password");
+    const user = await User.findOne({ email }).select("+password");
 
-    if(!user){
-        return next(new ErrorHandler("Invalid user or password",401));
+    if (!user) {
+        return next(new ErrorHandler("Invalid user or password", 401));
     }
 
     // check if password is matching
     const isPasswordMatching = await user.comparePassword(password);
 
-    if(!isPasswordMatching){
-        return next(new ErrorHandler("Invalid user or password",401));
+    if (!isPasswordMatching) {
+        return next(new ErrorHandler("Invalid user or password", 401));
     }
 
-    sendToken(user,200,res);
+    sendToken(user, 200, res);
 })
 
 export const getUserProfile = catchAsyncErrors(async (req, res, next) => {
@@ -56,10 +56,10 @@ export const getUserProfile = catchAsyncErrors(async (req, res, next) => {
     });
 });
 
-export const logoutUser = catchAsyncErrors(async(req,res,next)=>{
-    res.cookie("token",null,{
-        expires:new Date(Date.now()),
-        httpOnly:true
+export const logoutUser = catchAsyncErrors(async (req, res, next) => {
+    res.cookie("token", null, {
+        expires: new Date(Date.now()),
+        httpOnly: true
     })
 
     res.status(200).json({
@@ -69,28 +69,28 @@ export const logoutUser = catchAsyncErrors(async(req,res,next)=>{
 })
 
 
-export const changePassword = catchAsyncErrors(async(req,res,next) =>{
-    const {oldPassword,newPassword,confirmPassword} = req.body;
+export const changePassword = catchAsyncErrors(async (req, res, next) => {
+    const { oldPassword, newPassword, confirmPassword } = req.body;
 
-    if(!oldPassword || !newPassword || !confirmPassword){
-        return next(new ErrorHandler("provided old password, new password and confirm password",400));
+    if (!oldPassword || !newPassword || !confirmPassword) {
+        return next(new ErrorHandler("provided old password, new password and confirm password", 400));
     }
 
-    if(newPassword !== confirmPassword){
-        return next(new ErrorHandler("newPassword and confirmPassword must match ",400));
+    if (newPassword !== confirmPassword) {
+        return next(new ErrorHandler("newPassword and confirmPassword must match ", 400));
     }
 
     const user = await User.findById(req.user._id).select("+oldPassword");
 
-    if(!user){
-        return next(new ErrorHandler("Old password is incorrect",401));
+    if (!user) {
+        return next(new ErrorHandler("Old password is incorrect", 401));
     }
 
     user.password = newPassword;
 
     await user.save();
 
-    sendToken(user,200,res);
+    sendToken(user, 200, res);
 })
 
 
@@ -203,43 +203,60 @@ export const registerOrganizer = catchAsyncErrors(async (req, res, next) => {
 });
 
 // Register sponsor -> /api/v1/auth/sponsor/register
-export const registerSponsor = catchAsyncErrors(async (req, res, next) => {
-    const { name, email, password, companyName, industry, website, phone } = req.body;
+export const registerSponsor = catchAsyncErrors(
+    async (req, res, next) => {
+        const {
+            name,
+            email,
+            password,
+            companyName,
+            industry,
+            website,
+        } = req.body;
 
-    if (!name || !email || !password) {
-        return next(
-            new ErrorHandler(
-                "Please provide name, email and password",
-                400
-            )
-        );
+        if (
+            !name ||
+            !email ||
+            !password ||
+            !companyName
+        ) {
+            return next(
+                new ErrorHandler(
+                    "Please provide name, company name, email and password",
+                    400
+                )
+            );
+        }
+
+        const existingUser = await User.findOne({ email });
+
+        if (existingUser) {
+            return next(
+                new ErrorHandler(
+                    "User with this email already exists",
+                    400
+                )
+            );
+        }
+
+        const user = await User.create({
+            name,
+            email,
+            password,
+            role: "sponsor",
+            isProfileComplete: false,
+        });
+
+        await Sponsor.create({
+            userId: user._id,
+            companyName,
+            representativeName: name,
+            industry: industry || "Gaming & Esports",
+            website: website || "",
+            contactEmail: email,
+            status: "pending",
+        });
+
+        sendToken(user, 201, res);
     }
-
-    const existingUser = await User.findOne({ email });
-
-    if (existingUser) {
-        return next(
-            new ErrorHandler("User with this email already exists", 400)
-        );
-    }
-
-    const user = await User.create({
-        name,
-        email,
-        password,
-        role: "sponsor",
-    });
-
-    // Also create Sponsor profile record
-    await Sponsor.create({
-        userId: user._id,
-        companyName: companyName || name,
-        industry: industry || "Gaming & Esports",
-        website: website || "",
-        contactEmail: email,
-        contactPhone: phone || "",
-        status: "verified",
-    }).catch((err) => console.error("Sponsor profile creation:", err.message));
-
-    sendToken(user, 201, res);
-});
+);
