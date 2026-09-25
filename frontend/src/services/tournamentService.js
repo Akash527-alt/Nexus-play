@@ -1,15 +1,13 @@
-import api from './api';
+import api from "./api";
 
 export const tournamentService = {
-  // Tournaments lists
   getAll: async () => {
-    const res = await api.get('/tournaments');
+    const res = await api.get("/tournaments");
     return res.data;
   },
 
-  // Organizer List
   getMy: async () => {
-    const res = await api.get('/tournaments/me');
+    const res = await api.get("/tournaments/me");
     return res.data;
   },
 
@@ -19,7 +17,30 @@ export const tournamentService = {
   },
 
   create: async (data) => {
-    const res = await api.post('/tournaments', data);
+    const formData = new FormData();
+
+    Object.entries(data).forEach(([key, value]) => {
+      if (value === undefined || value === null) {
+        return;
+      }
+
+      if (key === "prizes") {
+        formData.append(key, JSON.stringify(value));
+        return;
+      }
+
+      if (key === "tournamentImage") {
+        if (value instanceof File) {
+          formData.append(key, value);
+        }
+        return;
+      }
+
+      formData.append(key, value);
+    });
+
+    const res = await api.post("/tournaments", formData);
+
     return res.data;
   },
 
@@ -30,6 +51,6 @@ export const tournamentService = {
 
     return response.data;
   },
-
-
 };
+
+export default tournamentService;

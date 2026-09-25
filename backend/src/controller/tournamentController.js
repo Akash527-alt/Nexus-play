@@ -1,11 +1,9 @@
 import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
-import Tournament from "../models/tournament.js"
+import Tournament from "../models/Tournament.js";
 import ErrorHandler from "../utils/ErrorHandler.js";
 import APIFeatures from "../utils/apiFeatures.js";
 import Organizer from "../models/organizer.js";
-
-// Create tournament
-// POST /api/v1/tournaments
+import cloudinary from "../config/cloudinary.js";
 
 export const createTournament = catchAsyncErrors(
     async (req, res, next) => {
@@ -23,13 +21,11 @@ export const createTournament = catchAsyncErrors(
             registrationDeadline,
             entryFee,
             prizePool,
-            prizes,
             maxParticipants,
             teamSize,
             status,
         } = req.body;
 
-        // Only draft and published are allowed during creation
         const tournamentStatus = status || "draft";
 
         if (!["draft", "published"].includes(tournamentStatus)) {
@@ -72,6 +68,45 @@ export const createTournament = catchAsyncErrors(
             );
         }
 
+        let prizesData = [];
+
+        if (req.body.prizes) {
+            try {
+                prizesData = JSON.parse(req.body.prizes);
+            } catch (error) {
+                return next(
+                    new ErrorHandler(
+                        "Invalid prize data",
+                        400
+                    )
+                );
+            }
+        }
+
+        let tournamentImage = "";
+
+        if (req.file) {
+            const uploadResult = await new Promise((resolve, reject) => {
+                const stream = cloudinary.uploader.upload_stream(
+                    {
+                        folder: "nexusplay/tournaments",
+                        resource_type: "image",
+                    },
+                    (error, result) => {
+                        if (error) {
+                            reject(error);
+                        } else {
+                            resolve(result);
+                        }
+                    }
+                );
+
+                stream.end(req.file.buffer);
+            });
+
+            tournamentImage = uploadResult.secure_url;
+        }
+
         const tournament = await Tournament.create({
             title,
             game,
@@ -81,12 +116,13 @@ export const createTournament = catchAsyncErrors(
             tournamentMode,
             venue,
             cityRegion,
+            tournamentImage,
             startDate,
             endDate,
             registrationDeadline,
             entryFee,
             prizePool,
-            prizes,
+            prizes: prizesData,
             maxParticipants,
             currentParticipants: 0,
             teamSize,
@@ -101,10 +137,6 @@ export const createTournament = catchAsyncErrors(
         });
     }
 );
-
-
-// Get all tournaments
-// GET /api/v1/tournaments
 
 export const getAllTournaments = catchAsyncErrors(
     async (req, res, next) => {
@@ -122,33 +154,19 @@ export const getAllTournaments = catchAsyncErrors(
         const totalTournaments =
             await apiFilters.query.clone().countDocuments();
 
-        // apiFilters.pagination(resPerPage);
-
-         const tournaments = await apiFilters.query.populate(
+        const tournaments = await apiFilters.query.populate(
             "organizer",
             "organizationName organizationType verificationStatus"
-        );
-
-        const currentPage = Number(req.query.page) || 1;
-
-        const totalPages = Math.ceil(
-            totalTournaments / resPerPage
         );
 
         res.status(200).json({
             success: true,
             count: tournaments.length,
             totalTournaments,
-            // currentPage,
-            // totalPages,
             tournaments,
         });
     }
 );
-
-
-// Get single tournament
-// GET /api/v1/tournaments/:id
 
 export const getTournament = catchAsyncErrors(
     async (req, res, next) => {
@@ -172,10 +190,6 @@ export const getTournament = catchAsyncErrors(
     }
 );
 
-
-// Update tournament details or status
-// PUT /api/v1/tournaments/:id
-
 export const updateTournament = catchAsyncErrors(
     async (req, res, next) => {
         const allowedFields = [
@@ -192,6 +206,7 @@ export const updateTournament = catchAsyncErrors(
             "registrationDeadline",
             "entryFee",
             "prizePool",
+            "tournamentImage",
             "prizes",
             "maxParticipants",
             "teamSize",
@@ -214,10 +229,6 @@ export const updateTournament = catchAsyncErrors(
     }
 );
 
-
-// Delete tournament
-// DELETE /api/v1/tournaments/:id
-
 export const deleteTournament = catchAsyncErrors(
     async (req, res, next) => {
         await req.tournament.deleteOne();
@@ -228,10 +239,6 @@ export const deleteTournament = catchAsyncErrors(
         });
     }
 );
-
-
-// Get current organizer tournaments
-// GET /api/v1/tournaments/me
 
 export const getMyTournaments = catchAsyncErrors(
     async (req, res, next) => {
@@ -259,5 +266,3 @@ export const getMyTournaments = catchAsyncErrors(
         });
     }
 );
-
-

@@ -50,6 +50,12 @@ const tournamentSchema = new mongoose.Schema(
             trim: true,
         },
 
+        tournamentImage: {
+            type: String,
+            default: "",
+            trim: true,
+        },
+
         startDate: {
             type: Date,
             required: [true, "Start date is required"],
