@@ -27,8 +27,7 @@ export function OrganizerSidebar() {
 
   const navItems = [
     { label: 'Dashboard', path: '/organizer/dashboard', icon: LayoutDashboard },
-    // end: true yahan add karne se `/organizer/tournaments/create` par "Tournaments" active nahi dikhega
-    { label: 'Tournaments', path: '/organizer/tournaments', icon: Trophy, end: true },
+    { label: 'My Tournaments', path: '/organizer/tournaments', icon: Trophy, end: true },
     { label: 'Create Tournament', path: '/organizer/tournaments/create', icon: PlusCircle },
     { label: 'History', path: '/organizer/history', icon: History },
     { label: 'Sponsors', path: '/organizer/sponsors', icon: Handshake },

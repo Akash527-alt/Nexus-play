@@ -97,16 +97,10 @@ export function SponsorTournaments() {
     return 0;
   };
 
-  const getBanner = (tournament) => {
-    return (
-      tournament.banner?.url ||
-      tournament.bannerImage?.url ||
-      tournament.bannerImage ||
-      tournament.bannerUrl ||
-      tournament.image?.url ||
-      tournament.image ||
-      null
-    );
+  const FALLBACK_IMAGE = "/images/tournament-placeholder.png";
+
+  const getTournamentImage = (tournament) => {
+    return tournament.tournamentImage || FALLBACK_IMAGE;
   };
 
   const getOrganizerName = (tournament) => {
@@ -346,7 +340,7 @@ export function SponsorTournaments() {
           {filteredTournaments.map((tournament) => {
             const tournamentId = tournament._id || tournament.id;
 
-            const banner = getBanner(tournament);
+            const tournamentImage = getTournamentImage(tournament);
 
             const prizePool = getPrizePool(tournament);
 
@@ -380,66 +374,24 @@ export function SponsorTournaments() {
                     BANNER
                 =================================================== */}
                 <div className="relative h-44 sm:h-48 overflow-hidden">
-                  {banner ? (
-                    <img
-                      src={banner}
-                      alt={tournament.title || "Tournament banner"}
-                      className="
-                        w-full
-                        h-full
-                        object-cover
-                        transition-transform
-                        duration-500
-                        group-hover:scale-105
-                      "
-                    />
-                  ) : (
-                    <div
-                      className="
-                        w-full
-                        h-full
-                        bg-gradient-to-br
-                        from-indigo-700/70
-                        via-purple-700/50
-                        to-slate-900
-                        flex
-                        items-center
-                        justify-center
-                      "
-                    >
-                      <Trophy className="w-14 h-14 text-white/20" />
-                    </div>
-                  )}
+                  <img
+                    src={tournamentImage}
+                    alt={tournament.title || "Tournament"}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    onError={(event) => {
+                      event.currentTarget.src = FALLBACK_IMAGE;
+                    }}
+                  />
 
-                  {/* Overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-                  {/* Game */}
                   <div className="absolute top-3 left-3">
-                    <span
-                      className="
-                        inline-flex
-                        items-center
-                        gap-1.5
-                        px-2.5
-                        py-1
-                        rounded-full
-                        bg-black/40
-                        backdrop-blur-md
-                        border
-                        border-white/20
-                        text-white
-                        text-[10px]
-                        font-bold
-                        uppercase
-                      "
-                    >
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white text-[10px] font-bold uppercase">
                       <Gamepad2 className="w-3 h-3" />
                       {tournament.game || "Esports"}
                     </span>
                   </div>
 
-                  {/* Prize Pool */}
                   <div className="absolute top-3 right-3">
                     <div className="px-3 py-1.5 rounded-xl bg-black/50 backdrop-blur-md border border-white/10">
                       <p className="text-[9px] text-white/60 uppercase font-semibold">
@@ -452,7 +404,6 @@ export function SponsorTournaments() {
                     </div>
                   </div>
 
-                  {/* Tournament Type */}
                   <div className="absolute bottom-3 left-3">
                     <span className="text-[10px] font-semibold text-white/80">
                       {tournament.tournamentType === "team"

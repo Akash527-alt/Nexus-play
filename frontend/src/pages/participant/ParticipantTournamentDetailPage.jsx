@@ -1,284 +1,602 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
 import {
   ArrowLeft,
-  MapPin,
-  Users,
-  Trophy,
-  Clock,
-  UserPlus,
-  CheckCircle,
   Calendar,
-  Shield,
+  CheckCircle2,
+  Clock,
   Gamepad2,
+  IndianRupee,
+  MapPin,
+  ShieldAlert,
+  Trophy,
+  Users,
 } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import { participantService } from "../../services/participantService";
+import { ParticipantRegistrationModal } from "../../components/participant/ParticipantRegistrationModal";
 
-// Exact Relative Path for: src/components/tournaments/RegisterModal.jsx
-import { RegisterModal } from "../../components/tournaments/RegisterModal";
+const FALLBACK_IMAGE = "/images/tournament-placeholder.png";
 
-export function ParticipantTournamentDetailPage() {
+export const ParticipantTournamentDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [tournament, setTournament] = useState(null);
+
   const [loading, setLoading] = useState(true);
+
+  const [registeredTournamentIds, setRegisteredTournamentIds] = useState(
+    new Set(),
+  );
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isAlreadyRegistered, setIsAlreadyRegistered] = useState(false);
 
-  // Load tournament and registration status
-  const fetchDetail = useCallback(() => {
+  useEffect(() => {
+    fetchTournament();
+    fetchMyRegistrations();
+  }, [id]);
+
+  const fetchTournament = async () => {
     try {
-      // Fetch tournaments from local storage or context mock data
-      const local1 = JSON.parse(
-        localStorage.getItem("nexus_tournaments") || "[]",
-      );
-      const local2 = JSON.parse(localStorage.getItem("my_tournaments") || "[]");
-      const allTournaments = [...local1, ...local2];
+      setLoading(true);
 
-      const found = allTournaments.find(
-        (t) => String(t._id || t.id) === String(id),
-      );
+      const response = await participantService.getTournaments();
 
-      if (found) {
-        setTournament(found);
+      const tournaments =
+        response?.tournaments ||
+        response?.data?.tournaments ||
+        response?.data ||
+        [];
 
-        // Check if current user is already registered for this tournament
-        const myRegs = JSON.parse(
-          localStorage.getItem("my_registrations") || "[]",
-        );
-        const registered = myRegs.some(
-          (r) => String(r.tournamentId) === String(id),
-        );
-        setIsAlreadyRegistered(registered);
-      } else {
-        toast.error("Tournament details not found");
+      const currentTournament = Array.isArray(tournaments)
+        ? tournaments.find((item) => String(item._id || item.id) === String(id))
+        : null;
+
+      if (!currentTournament) {
+        toast.error("Tournament not found");
+        return;
       }
-    } catch (err) {
-      console.error("Error loading tournament details:", err);
-      toast.error("Failed to load tournament information");
+
+      setTournament(currentTournament);
+    } catch (error) {
+      console.error("Failed to load tournament:", error);
+
+      toast.error("Failed to load tournament details");
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  };
 
-  const [isRegistered, setIsRegistered] = useState(false);
-  const [checkingRegistration, setCheckingRegistration] = useState(true);
+  const fetchMyRegistrations = async () => {
+    try {
+      const response = await participantService.getMyRegistrations();
 
-  useEffect(() => {
-    const checkRegistration = async () => {
-      try {
-        const tournamentId = tournament?._id || tournament?.id;
+      const registrations = response?.data || response?.registrations || [];
 
-        if (!tournamentId) return;
+      const ids = new Set(
+        registrations
+          .map((registration) => {
+            const tournament =
+              registration.tournament?._id ||
+              registration.tournament?.id ||
+              registration.tournament;
 
-        await participantService.getMyRegistration(tournamentId);
+            return tournament?.toString();
+          })
+          .filter(Boolean),
+      );
 
-        setIsRegistered(true);
-      } catch (error) {
-        const status = error?.response?.status;
-
-        if (status === 404) {
-          setIsRegistered(false);
-        } else {
-          console.error("Failed to check registration status:", error);
-        }
-      } finally {
-        setCheckingRegistration(false);
-      }
-    };
-
-    if (tournament) {
-      checkRegistration();
+      setRegisteredTournamentIds(ids);
+    } catch (error) {
+      console.error("Failed to fetch registrations:", error);
     }
-  }, [tournament]);
+  };
 
-  useEffect(() => {
-    fetchDetail();
-  }, [fetchDetail]);
+  const getTournamentStatus = () => {
+    if (!tournament) {
+      return "published";
+    }
+
+    const configuredStatus = (tournament.status || "published").toLowerCase();
+
+    if (["draft", "cancelled", "completed"].includes(configuredStatus)) {
+      return configuredStatus;
+    }
+
+    const now = new Date();
+
+    const startDate = tournament.startDate
+      ? new Date(tournament.startDate)
+      : null;
+
+    const endDate = tournament.endDate ? new Date(tournament.endDate) : null;
+
+    if (startDate && now < startDate) {
+      return "upcoming";
+    }
+
+    if (startDate && now >= startDate && (!endDate || now <= endDate)) {
+      return "ongoing";
+    }
+
+    if (endDate && now > endDate) {
+      return "completed";
+    }
+
+    return configuredStatus;
+  };
+
+  const getRegistrationState = () => {
+    const status = getTournamentStatus();
+
+    const now = new Date();
+
+    const startDate = tournament?.startDate
+      ? new Date(tournament.startDate)
+      : null;
+
+    const deadline = tournament?.registrationDeadline
+      ? new Date(tournament.registrationDeadline)
+      : null;
+
+    const currentParticipants = Number(tournament?.currentParticipants) || 0;
+
+    const maxParticipants = Number(tournament?.maxParticipants) || 0;
+
+    if (status === "ongoing") {
+      return {
+        allowed: false,
+        label: "Tournament Live",
+        reason: "Registration is closed because the tournament is ongoing.",
+      };
+    }
+
+    if (status === "completed") {
+      return {
+        allowed: false,
+        label: "Tournament Completed",
+        reason: "This tournament has already ended.",
+      };
+    }
+
+    if (status === "cancelled") {
+      return {
+        allowed: false,
+        label: "Tournament Cancelled",
+        reason: "Registration is closed for this tournament.",
+      };
+    }
+
+    if (status === "draft") {
+      return {
+        allowed: false,
+        label: "Registration Unavailable",
+        reason: "This tournament is not open for registration.",
+      };
+    }
+
+    if (deadline && now >= deadline) {
+      return {
+        allowed: false,
+        label: "Registration Closed",
+        reason: "The registration deadline has passed.",
+      };
+    }
+
+    if (startDate && now >= startDate) {
+      return {
+        allowed: false,
+        label: "Tournament Started",
+        reason: "Registration is closed because the tournament has started.",
+      };
+    }
+
+    if (maxParticipants > 0 && currentParticipants >= maxParticipants) {
+      return {
+        allowed: false,
+        label: "Slots Full",
+        reason: "All tournament slots are filled.",
+      };
+    }
+
+    return {
+      allowed: true,
+      label: "Register Now",
+      reason: "",
+    };
+  };
+
+  const handleRegister = () => {
+    const state = getRegistrationState();
+
+    if (!state.allowed) {
+      toast.error(state.reason);
+
+      return;
+    }
+
+    setIsModalOpen(true);
+  };
+
+  const formatDate = (value) => {
+    if (!value) {
+      return "TBA";
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return "TBA";
+    }
+
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const formatDateTime = (value) => {
+    if (!value) {
+      return "TBA";
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return "TBA";
+    }
+
+    return date.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px] text-zinc-400">
-        <div className="flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-sm font-medium">
-            Loading Tournament Details...
-          </span>
-        </div>
+      <div className="theme-card border theme-border rounded-2xl p-12 text-center">
+        <p className="text-sm theme-subtext">Loading tournament details...</p>
       </div>
     );
   }
 
   if (!tournament) {
     return (
-      <div className="text-center py-16 space-y-4">
-        <h2 className="text-xl font-bold text-white">Tournament Not Found</h2>
-        <p className="text-xs text-zinc-400">
-          The requested tournament may have been removed or does not exist.
-        </p>
+      <div className="theme-card border theme-border rounded-2xl p-12 text-center space-y-4">
+        <h2 className="text-lg font-bold theme-text">Tournament Not Found</h2>
+
         <button
+          type="button"
           onClick={() => navigate("/participant/tournaments")}
-          className="px-4 py-2 text-xs font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold cursor-pointer"
         >
-          Return to Tournaments
+          Back to Tournaments
         </button>
       </div>
     );
   }
 
-  const teamSize = Number(tournament.teamSize) || 1;
-  const entryFee = Number(
-    tournament.entryFee || tournament.registrationFee || 0,
-  );
-  const prizePool = Number(
-    tournament.totalPrizePool || tournament.prizePool || 0,
-  );
+  const status = getTournamentStatus();
+
+  const registrationState = getRegistrationState();
+
+  const tournamentId = String(tournament._id || tournament.id);
+
+  const isRegistered = registeredTournamentIds.has(tournamentId);
+
+  const prizePool =
+    Number(tournament.prizePool) || Number(tournament.totalPrizePool) || 0;
+
+  const entryFee =
+    Number(tournament.entryFee) || Number(tournament.registrationFee) || 0;
+
+  const currentParticipants = Number(tournament.currentParticipants) || 0;
+
+  const maxParticipants =
+    Number(tournament.maxParticipants) || Number(tournament.maxSlots) || 0;
+
+  const capacityPercentage =
+    maxParticipants > 0
+      ? Math.min((currentParticipants / maxParticipants) * 100, 100)
+      : 0;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-12 text-white">
-      {/* Back Button */}
+    <div className="max-w-5xl mx-auto space-y-6 pb-12">
       <button
         type="button"
         onClick={() => navigate("/participant/tournaments")}
-        className="flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-all cursor-pointer"
+        className="theme-text theme-card border theme-border flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold cursor-pointer"
       >
-        <ArrowLeft className="w-4 h-4" /> Back to Tournaments
+        <ArrowLeft className="w-4 h-4" />
+        Back to Tournaments
       </button>
 
-      {/* Main Card Header */}
-      <div className="bg-zinc-900 border border-zinc-800 p-6 sm:p-8 rounded-2xl shadow-2xl space-y-6 relative overflow-hidden">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-zinc-800/80 pb-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-md">
-                {tournament.game || "Esports"}
-              </span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 bg-zinc-800 px-2.5 py-1 rounded-md">
-                {tournament.status || "Upcoming"}
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
-              {tournament.title || tournament.name || "Untitled Tournament"}
-            </h1>
-            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-              {tournament.description ||
-                "Official tournament hosted on Nexus Play. Join with your team and compete for top positions."}
-            </p>
+      <div className="theme-card border theme-border rounded-2xl overflow-hidden">
+        <div className="relative h-[300px] sm:h-[400px]">
+          <img
+            src={tournament.tournamentImage || FALLBACK_IMAGE}
+            alt={tournament.title || "Tournament"}
+            className="w-full h-full object-cover"
+            onError={(event) => {
+              event.currentTarget.src = FALLBACK_IMAGE;
+            }}
+          />
+
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+
+          <div className="absolute top-5 left-5 right-5 flex items-start justify-between gap-3">
+            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-white bg-black/50 backdrop-blur-sm border border-white/20 px-3 py-1.5 rounded-full">
+              <Gamepad2 className="w-3.5 h-3.5" />
+              {tournament.game || "Esports"}
+            </span>
+
+            <span
+              className={`text-[10px] font-bold px-3 py-1.5 rounded-full ${
+                status === "ongoing"
+                  ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                  : status === "completed"
+                    ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                    : status === "cancelled"
+                      ? "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                      : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+              }`}
+            >
+              {status === "ongoing"
+                ? "Ongoing"
+                : status.charAt(0).toUpperCase() + status.slice(1)}
+            </span>
           </div>
 
-          {/* Action Registration Button */}
-          <div className="w-full md:w-auto flex-shrink-0">
-            {isAlreadyRegistered ? (
-              <div className="flex items-center justify-center gap-2 px-6 py-3.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl w-full">
-                <CheckCircle className="w-4 h-4" /> Registered
+          <div className="absolute bottom-6 left-5 right-5">
+            <p className="text-xs text-white/70 font-bold uppercase">
+              {tournament.tournamentType === "team"
+                ? "Team Tournament"
+                : "Solo Tournament"}
+            </p>
+
+            <h1 className="text-2xl sm:text-4xl font-extrabold text-white mt-1">
+              {tournament.title || tournament.name}
+            </h1>
+
+            <p className="text-sm text-white/70 mt-2 max-w-3xl">
+              {tournament.description || "No description provided."}
+            </p>
+          </div>
+        </div>
+
+        <div className="p-5 sm:p-6 space-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="theme-icon-box border theme-border rounded-xl p-4">
+              <Trophy className="w-4 h-4 text-amber-400 mb-2" />
+
+              <p className="text-[10px] theme-subtext uppercase font-bold">
+                Prize Pool
+              </p>
+
+              <p className="text-lg font-bold text-emerald-500">
+                ₹{prizePool.toLocaleString("en-IN")}
+              </p>
+            </div>
+
+            <div className="theme-icon-box border theme-border rounded-xl p-4">
+              <IndianRupee className="w-4 h-4 text-indigo-400 mb-2" />
+
+              <p className="text-[10px] theme-subtext uppercase font-bold">
+                Entry Fee
+              </p>
+
+              <p className="text-lg font-bold theme-text">
+                {entryFee > 0 ? `₹${entryFee.toLocaleString("en-IN")}` : "Free"}
+              </p>
+            </div>
+
+            <div className="theme-icon-box border theme-border rounded-xl p-4">
+              <Users className="w-4 h-4 text-cyan-400 mb-2" />
+
+              <p className="text-[10px] theme-subtext uppercase font-bold">
+                Participants
+              </p>
+
+              <p className="text-lg font-bold theme-text">
+                {currentParticipants}/{maxParticipants}
+              </p>
+            </div>
+
+            <div className="theme-icon-box border theme-border rounded-xl p-4">
+              <Gamepad2 className="w-4 h-4 text-indigo-400 mb-2" />
+
+              <p className="text-[10px] theme-subtext uppercase font-bold">
+                Type
+              </p>
+
+              <p className="text-lg font-bold theme-text capitalize">
+                {tournament.tournamentType || "Solo"}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="theme-icon-box border theme-border rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="w-4 h-4 text-indigo-400" />
+
+                <span className="text-xs font-bold uppercase theme-subtext">
+                  Tournament Start
+                </span>
               </div>
-            ) : (
+
+              <p className="text-sm font-bold theme-text">
+                {formatDateTime(tournament.startDate)}
+              </p>
+            </div>
+
+            <div className="theme-icon-box border theme-border rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="w-4 h-4 text-indigo-400" />
+
+                <span className="text-xs font-bold uppercase theme-subtext">
+                  Tournament End
+                </span>
+              </div>
+
+              <p className="text-sm font-bold theme-text">
+                {formatDateTime(tournament.endDate)}
+              </p>
+            </div>
+
+            <div className="theme-icon-box border theme-border rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="w-4 h-4 text-rose-400" />
+
+                <span className="text-xs font-bold uppercase theme-subtext">
+                  Registration Deadline
+                </span>
+              </div>
+
+              <p className="text-sm font-bold theme-text">
+                {formatDateTime(tournament.registrationDeadline)}
+              </p>
+            </div>
+
+            <div className="theme-icon-box border theme-border rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <MapPin className="w-4 h-4 text-emerald-400" />
+
+                <span className="text-xs font-bold uppercase theme-subtext">
+                  Venue
+                </span>
+              </div>
+
+              <p className="text-sm font-bold theme-text">
+                {tournament.venue || "Online Tournament"}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold theme-subtext">
+                Tournament Capacity
+              </span>
+
+              <span className="text-xs font-bold theme-text">
+                {currentParticipants}/{maxParticipants}
+              </span>
+            </div>
+
+            <div className="w-full h-2 rounded-full bg-slate-500/20 overflow-hidden">
+              <div
+                className="h-full bg-indigo-500 rounded-full"
+                style={{
+                  width: `${capacityPercentage}%`,
+                }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <h2 className="text-sm font-bold theme-text mb-3">
+              Prize Breakdown
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {Array.isArray(tournament.prizes) &&
+              tournament.prizes.length > 0 ? (
+                tournament.prizes.map((prize, index) => (
+                  <div
+                    key={index}
+                    className="theme-icon-box border theme-border rounded-xl p-3 flex items-center justify-between"
+                  >
+                    <span className="text-xs font-bold theme-text">
+                      Rank {prize.position || index + 1}
+                    </span>
+
+                    <span className="text-sm font-bold text-emerald-500">
+                      ₹{Number(prize.amount).toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs theme-subtext">
+                  No prize breakdown available.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <h2 className="text-sm font-bold theme-text mb-3 flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-indigo-400" />
+              Tournament Rules
+            </h2>
+
+            <div className="theme-icon-box border theme-border rounded-xl p-4">
+              {typeof tournament.rules === "string" ? (
+                tournament.rules
+                  .split(/\r?\n/)
+                  .filter((rule) => rule.trim())
+                  .map((rule, index) => (
+                    <p key={index} className="text-xs theme-subtext mb-2">
+                      • {rule.trim()}
+                    </p>
+                  ))
+              ) : (
+                <p className="text-xs theme-subtext">
+                  Standard tournament rules apply.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="border-t theme-border pt-5">
+            {isRegistered ? (
+              <div className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-3.5 font-bold text-emerald-500">
+                <CheckCircle2 className="w-5 h-5" />
+                Already Registered
+              </div>
+            ) : registrationState.allowed ? (
               <button
                 type="button"
-                onClick={() => setIsModalOpen(true)}
-                className="w-full md:w-auto px-6 py-3.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                onClick={handleRegister}
+                className="w-full rounded-xl bg-indigo-600 px-5 py-3.5 font-bold text-white transition hover:bg-indigo-500 cursor-pointer"
               >
-                <UserPlus className="w-4 h-4" /> Register Squad
+                Register Now
               </button>
+            ) : (
+              <div className="theme-icon-box border theme-border rounded-xl px-5 py-3.5 text-center">
+                <p className="text-sm font-bold theme-subtext">
+                  {registrationState.label}
+                </p>
+
+                <p className="text-xs theme-subtext mt-1">
+                  {registrationState.reason}
+                </p>
+              </div>
             )}
           </div>
         </div>
-
-        {/* Tournament Highlights Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-          <div className="p-4 rounded-xl border border-zinc-800/80 bg-zinc-950/60 space-y-1">
-            <span className="text-[10px] font-bold uppercase text-zinc-400 flex items-center gap-1.5">
-              <Trophy className="w-4 h-4 text-amber-400" /> Prize Pool
-            </span>
-            <p className="text-xl font-black text-indigo-400">
-              ₹{prizePool.toLocaleString("en-IN")}
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl border border-zinc-800/80 bg-zinc-950/60 space-y-1">
-            <span className="text-[10px] font-bold uppercase text-zinc-400 flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-indigo-400" /> Roster Format
-            </span>
-            <p className="text-sm font-bold text-zinc-200">
-              {teamSize > 1 ? `Squad (${teamSize} Players)` : "Solo (1v1)"}
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl border border-zinc-800/80 bg-zinc-950/60 space-y-1">
-            <span className="text-[10px] font-bold uppercase text-zinc-400 flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-emerald-400" /> Entry Fee
-            </span>
-            <p className="text-sm font-bold text-emerald-400">
-              {entryFee > 0 ? `₹${entryFee}` : "FREE ENTRY"}
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl border border-zinc-800/80 bg-zinc-950/60 space-y-1">
-            <span className="text-[10px] font-bold uppercase text-zinc-400 flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-rose-400" /> Venue / Room
-            </span>
-            <p className="text-sm font-bold text-zinc-200 truncate">
-              {tournament.venue || "Custom Room / Online"}
-            </p>
-          </div>
-        </div>
       </div>
 
-      {/* Additional Details & Guidelines */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 bg-zinc-900 border border-zinc-800 p-6 rounded-2xl space-y-4">
-          <h3 className="font-bold text-sm uppercase text-indigo-400 tracking-wider flex items-center gap-2">
-            <Gamepad2 className="w-4 h-4" /> Tournament Schedule & Rules
-          </h3>
-          <div className="space-y-3 text-xs text-zinc-300 leading-relaxed">
-            <p>
-              1. All team members must enter their verified Game UIDs and
-              In-Game Names (IGNs).
-            </p>
-            <p>
-              2. Room credentials will be provided 15 minutes prior to the start
-              time in your dashboard.
-            </p>
-            <p>
-              3. Emulators, hacks, or third-party tools are strictly prohibited
-              and will result in an immediate ban.
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl space-y-4">
-          <h3 className="font-bold text-sm uppercase text-emerald-400 tracking-wider flex items-center gap-2">
-            <Shield className="w-4 h-4" /> Organizer Support
-          </h3>
-          <div className="text-xs space-y-2 text-zinc-400">
-            <p>
-              <strong className="text-white">Organizer:</strong>{" "}
-              {tournament.organizer || "Official Arena"}
-            </p>
-            <p>
-              <strong className="text-white">Date:</strong>{" "}
-              {tournament.date || "TBA"}
-            </p>
-            <p>
-              <strong className="text-white">Fair Play:</strong> Guaranteed
-              Anti-Cheat Protocol
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Registration Modal Component */}
-      <RegisterModal
-        tournament={tournament}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={() => {
-          setIsModalOpen(false);
-          setIsAlreadyRegistered(true);
-          fetchDetail();
-        }}
-      />
+      {isModalOpen && (
+        <ParticipantRegistrationModal
+          tournament={tournament}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSuccess={() => {
+            setIsModalOpen(false);
+            fetchTournament();
+            fetchMyRegistrations();
+          }}
+        />
+      )}
     </div>
   );
-}
+};
+
+export default ParticipantTournamentDetailPage;
