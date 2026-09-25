@@ -1,9 +1,9 @@
-import dotevn from 'dotenv';
+import dotenv from 'dotenv';
 import app from "./app.js";
 import { connectDatabase } from './config/database.js';
 import { startTournamentScheduler } from "./utils/tournamentScheduler.js";
 
-dotevn.config();
+dotenv.config();
 
 const PORT = Number(process.env.PORT) || 5000;
 

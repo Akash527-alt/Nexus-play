@@ -285,7 +285,7 @@ function App() {
               />
 
               {/* ROOT & FALLBACK */}
-              <Route path="/" element={<LandingPage />} />
+              <Route path="/" element={<LandingPage replace/>} />
               <Route path="/unauthorized" element={<UnauthorizedPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
