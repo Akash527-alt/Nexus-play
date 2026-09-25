@@ -11,8 +11,6 @@ import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
 import { participantService } from "../../services/participantService";
 
-const TOTAL_TEAM_PLAYERS = 4;
-
 const createPlayer = () => ({
   fullName: "",
   gameUid: "",
@@ -20,19 +18,24 @@ const createPlayer = () => ({
   phone: "",
 });
 
-const createInitialFormData = (user) => ({
-  teamName: "",
+const getTeamSize = (tournament) => {
+  if (tournament?.tournamentType?.toLowerCase() === "solo") {
+    return 1;
+  }
 
+  const size = Number(tournament?.teamSize);
+
+  return Number.isInteger(size) && size > 1 ? size : 0;
+};
+
+const createInitialFormData = (user, teammateCount) => ({
+  teamName: "",
   captainName: user?.name || "",
   captainEmail: user?.email || "",
   captainPhone: "",
   captainInGameId: "",
   discordTag: "",
-
-  // Captain is separate.
-  // Three additional players make a total team size of four.
-  players: Array.from({ length: TOTAL_TEAM_PLAYERS - 1 }, createPlayer),
-
+  players: Array.from({ length: teammateCount }, createPlayer),
   agreedToRules: false,
   agreedToAntiCheat: false,
   agreedToConductCode: false,
@@ -54,31 +57,40 @@ export function ParticipantRegistrationModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
-  const isTeamEvent =
-    tournament?.tournamentType?.toLowerCase() === "team" ||
-    Number(tournament?.teamSize || 1) > 1;
+  const teamSize = getTeamSize(tournament);
 
-  const createFormData = () => createInitialFormData(user);
+  const isTeamEvent = tournament?.tournamentType?.toLowerCase() === "team";
+
+  const teammateCount = isTeamEvent ? Math.max(teamSize - 1, 0) : 0;
+
+  const createFormData = () => createInitialFormData(user, teammateCount);
 
   const [formData, setFormData] = useState(createFormData);
 
-  /*
-   * Reset form whenever tournament or logged-in user changes.
-   */
   useEffect(() => {
-    if (tournament && user) {
-      setFormData(createInitialFormData(user));
-      setErrors({});
+    if (!isOpen || !tournament || !user) {
+      return;
     }
-  }, [tournament?._id, tournament?.id, user?._id]);
+
+    setFormData(createInitialFormData(user, teammateCount));
+    setErrors({});
+  }, [
+    isOpen,
+    tournament?._id,
+    tournament?.id,
+    tournament?.teamSize,
+    tournament?.tournamentType,
+    user?._id,
+  ]);
 
   if (!isOpen || !tournament) {
     return null;
   }
 
-  /*
-   * Handle captain fields and agreement checkboxes.
-   */
+  const tournamentTitle = tournament.title || tournament.name || "Tournament";
+
+  const entryFee = tournament.entryFee || tournament.registrationFee || 0;
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
 
@@ -95,9 +107,6 @@ export function ParticipantRegistrationModal({
     }
   };
 
-  /*
-   * Handle teammate fields.
-   */
   const handlePlayerChange = (index, field, value) => {
     setFormData((previous) => {
       const updatedPlayers = [...previous.players];
@@ -121,9 +130,32 @@ export function ParticipantRegistrationModal({
     }
   };
 
-  /*
-   * Validate the registration form.
-   */
+  const validateRegistrationWindow = () => {
+    const now = new Date();
+
+    if (tournament.status !== "published") {
+      toast.error("Registration is not available for this tournament.");
+      return false;
+    }
+
+    if (
+      tournament.registrationDeadline &&
+      now >= new Date(tournament.registrationDeadline)
+    ) {
+      toast.error("Registration deadline has already passed.");
+      return false;
+    }
+
+    if (tournament.startDate && now >= new Date(tournament.startDate)) {
+      toast.error(
+        "Registration is closed because the tournament has already started.",
+      );
+      return false;
+    }
+
+    return true;
+  };
+
   const validate = () => {
     const newErrors = {};
 
@@ -131,7 +163,15 @@ export function ParticipantRegistrationModal({
       newErrors.user = "You must be logged in to register.";
     }
 
-    // Team name is required for both solo and team registrations.
+    if (!teamSize || teamSize < 1) {
+      newErrors.teamSize = "Invalid team size configured for this tournament.";
+    }
+
+    if (isTeamEvent && teamSize < 2) {
+      newErrors.teamSize =
+        "Invalid team size configured for this team tournament.";
+    }
+
     if (!formData.teamName.trim()) {
       newErrors.teamName = isTeamEvent
         ? "Team / Clan name is required."
@@ -163,13 +203,14 @@ export function ParticipantRegistrationModal({
       newErrors.discordTag = "Discord handle is required.";
     }
 
-    /*
-     * Validate exactly three additional players for team events.
-     * Captain + three teammates = four players.
-     */
     if (isTeamEvent) {
+      if (formData.players.length !== teammateCount) {
+        newErrors.teamSize = `Exactly ${teammateCount} teammates are required.`;
+      }
+
       formData.players.forEach((player, index) => {
         const isEmailValid = /\S+@\S+\.\S+/.test(player.email.trim());
+
         const cleanedPhone = player.phone.replace(/\D/g, "");
 
         if (
@@ -180,14 +221,11 @@ export function ParticipantRegistrationModal({
           cleanedPhone.length !== 10
         ) {
           newErrors[`player_${index}`] =
-            `Player ${index + 2} must have a valid name, IGN, email and 10-digit phone number.`;
+            `Teammate ${index + 1} must have a valid name, IGN, email and 10-digit phone number.`;
         }
       });
     }
 
-    /*
-     * Validate mandatory agreements.
-     */
     if (!formData.agreedToRules) {
       newErrors.agreedToRules = "You must accept the tournament rules.";
     }
@@ -228,11 +266,16 @@ export function ParticipantRegistrationModal({
     return Object.keys(newErrors).length === 0;
   };
 
-  /*
-   * Submit registration.
-   */
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (isSubmitting) {
+      return;
+    }
+
+    if (!validateRegistrationWindow()) {
+      return;
+    }
 
     if (!validate()) {
       toast.error("Please complete all required fields and agreements.");
@@ -256,9 +299,6 @@ export function ParticipantRegistrationModal({
 
       const registrationType = isTeamEvent ? "team" : "solo";
 
-      /*
-       * The captain is always the logged-in NexusPlay user.
-       */
       const captainPlayer = {
         user: user._id,
         fullName: formData.captainName.trim(),
@@ -269,12 +309,9 @@ export function ParticipantRegistrationModal({
 
       let players = [captainPlayer];
 
-      /*
-       * Add three teammates for team registration.
-       * Teammates do not require NexusPlay accounts.
-       */
       if (isTeamEvent) {
         const teammatePlayers = formData.players.map((player) => ({
+          user: null,
           fullName: player.fullName.trim(),
           gameUid: player.gameUid.trim(),
           email: player.email.trim().toLowerCase(),
@@ -284,21 +321,22 @@ export function ParticipantRegistrationModal({
         players = [captainPlayer, ...teammatePlayers];
       }
 
-      /*
-       * Team name is sent for both solo and team registrations.
-       */
+      if (players.length !== teamSize) {
+        toast.error(
+          `Exactly ${teamSize} players are required for this tournament.`,
+        );
+        return;
+      }
+
       const registrationData = {
         registrationType,
-
         teamName: formData.teamName.trim(),
-
         players,
-
         captainContact: {
           whatsapp: formData.captainPhone.replace(/\D/g, ""),
+          alternatePhone: "",
           discordId: formData.discordTag.trim(),
         },
-
         agreements: {
           antiCheat: formData.agreedToAntiCheat,
           rulebook: formData.agreedToRules,
@@ -318,7 +356,7 @@ export function ParticipantRegistrationModal({
       toast.success("Registration completed successfully!");
 
       if (onSuccess) {
-        onSuccess();
+        await onSuccess();
       }
 
       onClose();
@@ -335,10 +373,6 @@ export function ParticipantRegistrationModal({
       setIsSubmitting(false);
     }
   };
-
-  const tournamentTitle = tournament.title || tournament.name || "Tournament";
-
-  const entryFee = tournament.entryFee || tournament.registrationFee || 0;
 
   const agreementErrorKeys = [
     "agreedToRules",
@@ -370,19 +404,26 @@ export function ParticipantRegistrationModal({
     const { checked } = e.target;
 
     setFormData((previous) => {
-      const updated = { ...previous };
+      const updated = {
+        ...previous,
+      };
+
       agreementFields.forEach((field) => {
         updated[field] = checked;
       });
+
       return updated;
     });
 
-    // Clear any existing errors on all agreement fields
     setErrors((previous) => {
-      const updated = { ...previous };
+      const updated = {
+        ...previous,
+      };
+
       agreementFields.forEach((field) => {
         updated[field] = null;
       });
+
       return updated;
     });
   };
@@ -394,7 +435,6 @@ export function ParticipantRegistrationModal({
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
       <div className="theme-card border theme-border w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
-        {/* Header */}
         <div className="p-5 border-b theme-border flex items-center justify-between bg-indigo-600/10">
           <div>
             <span className="text-[10px] font-bold tracking-widest text-indigo-500 uppercase">
@@ -405,8 +445,8 @@ export function ParticipantRegistrationModal({
 
             <p className="text-xs theme-subtext mt-0.5">
               {tournament.game} •{" "}
-              {isTeamEvent ? "Team (4 Players)" : "Solo Player"} • Fee:{" "}
-              {entryFee ? `₹${entryFee}` : "Free"}
+              {isTeamEvent ? `Team (${teamSize} Players)` : "Solo Player"} •
+              Fee: {entryFee ? `₹${entryFee}` : "Free"}
             </p>
           </div>
 
@@ -421,19 +461,16 @@ export function ParticipantRegistrationModal({
           </button>
         </div>
 
-        {/* Form */}
         <form
           onSubmit={handleSubmit}
           className="p-6 overflow-y-auto space-y-6 flex-1 text-xs"
         >
-          {/* Section 1: Registration Details */}
           <div className="space-y-4">
             <h3 className="font-bold text-sm theme-text flex items-center gap-2 border-b theme-border pb-2">
               <UserCheck className="w-4 h-4 text-indigo-500" />
               1. Registration Details
             </h3>
 
-            {/* Team / Clan Name */}
             <div>
               <label className="block font-semibold theme-subtext mb-1">
                 {isTeamEvent ? "Team / Clan Name *" : "Player / Clan Name *"}
@@ -461,9 +498,7 @@ export function ParticipantRegistrationModal({
               )}
             </div>
 
-            {/* Captain Details */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Captain Name */}
               <div>
                 <label className="block font-semibold theme-subtext mb-1">
                   Full Legal Name *
@@ -484,7 +519,6 @@ export function ParticipantRegistrationModal({
                 )}
               </div>
 
-              {/* Captain IGN */}
               <div>
                 <label className="block font-semibold theme-subtext mb-1">
                   In-Game ID / IGN *
@@ -508,7 +542,6 @@ export function ParticipantRegistrationModal({
                 )}
               </div>
 
-              {/* Captain Email */}
               <div>
                 <label className="block font-semibold theme-subtext mb-1">
                   Email Address *
@@ -529,7 +562,6 @@ export function ParticipantRegistrationModal({
                 )}
               </div>
 
-              {/* Captain Phone */}
               <div>
                 <label className="block font-semibold theme-subtext mb-1">
                   Phone Number (WhatsApp) *
@@ -554,7 +586,6 @@ export function ParticipantRegistrationModal({
                 )}
               </div>
 
-              {/* Discord */}
               <div className="sm:col-span-2">
                 <label className="block font-semibold theme-subtext mb-1">
                   Discord Tag / Username *
@@ -580,17 +611,17 @@ export function ParticipantRegistrationModal({
             </div>
           </div>
 
-          {/* Section 2: Team Members */}
           {isTeamEvent && (
             <div className="space-y-4">
               <h3 className="font-bold text-sm theme-text flex items-center gap-2 border-b theme-border pb-2">
                 <UserCheck className="w-4 h-4 text-indigo-500" />
-                2. Team Members (3 Teammates)
+                2. Team Members ({teammateCount} Teammates)
               </h3>
 
               <p className="theme-subtext text-[11px]">
-                The captain is already included. Add three teammates to complete
-                your four-player team.
+                The captain is already included. Add {teammateCount} teammate
+                {teammateCount !== 1 ? "s" : ""} to complete your {teamSize}
+                -player team.
               </p>
 
               {formData.players.map((player, index) => (
@@ -599,11 +630,10 @@ export function ParticipantRegistrationModal({
                   className="p-4 border theme-border rounded-xl space-y-3 bg-black/5 dark:bg-white/5"
                 >
                   <p className="font-bold theme-text text-xs">
-                    Player #{index + 2}
+                    Teammate #{index + 1}
                   </p>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Full Name */}
                     <input
                       type="text"
                       placeholder="Player Full Name"
@@ -614,7 +644,6 @@ export function ParticipantRegistrationModal({
                       className="theme-input px-3 py-2 border rounded-lg outline-none"
                     />
 
-                    {/* Game UID */}
                     <input
                       type="text"
                       placeholder="In-Game ID / IGN"
@@ -625,7 +654,6 @@ export function ParticipantRegistrationModal({
                       className="theme-input px-3 py-2 border rounded-lg outline-none"
                     />
 
-                    {/* Email */}
                     <input
                       type="email"
                       placeholder="Player Email"
@@ -636,7 +664,6 @@ export function ParticipantRegistrationModal({
                       className="theme-input px-3 py-2 border rounded-lg outline-none"
                     />
 
-                    {/* Phone */}
                     <input
                       type="tel"
                       placeholder="Player Phone Number"
@@ -659,7 +686,6 @@ export function ParticipantRegistrationModal({
             </div>
           )}
 
-          {/* Section 3: Responsibilities */}
           <div className="space-y-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
             <h4 className="font-bold text-amber-500 text-xs flex items-center gap-1.5">
               <AlertCircle className="w-4 h-4" />
@@ -682,7 +708,6 @@ export function ParticipantRegistrationModal({
             </ul>
           </div>
 
-          {/* Select All */}
           <label className="flex items-start gap-2.5 cursor-pointer p-3 rounded-xl border theme-border bg-indigo-600/5">
             <input
               type="checkbox"
@@ -697,7 +722,6 @@ export function ParticipantRegistrationModal({
             </span>
           </label>
 
-          {/* Section 4: Agreements */}
           <div className="space-y-3">
             <h3 className="font-bold text-sm theme-text flex items-center gap-2 border-b theme-border pb-2">
               <ShieldCheck className="w-4 h-4 text-indigo-500" />
@@ -705,7 +729,6 @@ export function ParticipantRegistrationModal({
             </h3>
 
             <div className="space-y-3">
-              {/* Rules */}
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -721,7 +744,6 @@ export function ParticipantRegistrationModal({
                 </span>
               </label>
 
-              {/* Anti-Cheat */}
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -738,7 +760,6 @@ export function ParticipantRegistrationModal({
                 </span>
               </label>
 
-              {/* Conduct */}
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -755,7 +776,6 @@ export function ParticipantRegistrationModal({
                 </span>
               </label>
 
-              {/* Media Consent */}
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -772,7 +792,6 @@ export function ParticipantRegistrationModal({
                 </span>
               </label>
 
-              {/* Age Eligibility */}
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -789,7 +808,6 @@ export function ParticipantRegistrationModal({
                 </span>
               </label>
 
-              {/* Identity Verification */}
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -805,7 +823,6 @@ export function ParticipantRegistrationModal({
                 </span>
               </label>
 
-              {/* Guardian Consent */}
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -822,7 +839,6 @@ export function ParticipantRegistrationModal({
                 </span>
               </label>
 
-              {/* Captain Responsibility */}
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -847,7 +863,6 @@ export function ParticipantRegistrationModal({
             )}
           </div>
 
-          {/* Footer */}
           <div className="pt-4 border-t theme-border flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] theme-subtext">
@@ -885,3 +900,5 @@ export function ParticipantRegistrationModal({
     </div>
   );
 }
+
+export default ParticipantRegistrationModal;

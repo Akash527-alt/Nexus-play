@@ -7,20 +7,30 @@ const api = axios.create({
   withCredentials: true,
 });
 
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 export const participantService = {
-  // Dashboard statistics
   getDashboardStats: async () => {
     const response = await api.get("/dashboard");
     return response.data;
   },
 
-  // Get tournaments
   getTournaments: async () => {
     const response = await api.get("/tournaments");
     return response.data;
   },
 
-  // Register for a tournament
   registerTournament: async (tournamentId, registrationData) => {
     const response = await api.post(
       `/tournaments/${tournamentId}/register`,
@@ -30,13 +40,11 @@ export const participantService = {
     return response.data;
   },
 
-  // Get all registrations of logged-in user
   getMyRegistrations: async () => {
     const response = await api.get("/registrations/me");
     return response.data;
   },
 
-  // Get registration for a specific tournament
   getMyRegistration: async (tournamentId) => {
     const response = await api.get(
       `/tournaments/${tournamentId}/registration`
@@ -45,7 +53,6 @@ export const participantService = {
     return response.data;
   },
 
-  // Cancel registration
   cancelRegistration: async (tournamentId) => {
     const response = await api.delete(
       `/tournaments/${tournamentId}/registration`
@@ -54,13 +61,11 @@ export const participantService = {
     return response.data;
   },
 
-  // Get participant profile
   getProfile: async () => {
     const response = await api.get("/participant/profile");
     return response.data;
   },
 
-  // Update participant profile
   updateProfile: async (data) => {
     const response = await api.put(
       "/participant/profile",
@@ -70,9 +75,10 @@ export const participantService = {
     return response.data;
   },
 
-  // Get participation history
   getHistory: async () => {
     const response = await api.get("/participant/history");
     return response.data;
   },
 };
+
+export default participantService;
