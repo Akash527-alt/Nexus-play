@@ -1,43 +1,34 @@
-
 import mongoose from "mongoose";
 
 const registrationSchema = new mongoose.Schema(
     {
-        // User who submits the registration (captain)
         user: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: [true, "User is required"],
         },
 
-        // Tournament for which registration is made
         tournament: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Tournament",
             required: [true, "Tournament is required"],
         },
 
-        // Solo or team registration
         registrationType: {
             type: String,
             enum: ["solo", "team"],
             required: [true, "Registration type is required"],
         },
 
-        // Clan/team name required for both solo and team
         teamName: {
             type: String,
             required: [true, "Clan name is required"],
             trim: true,
         },
 
-        // Player information
-        // Solo: 1 player
-        // Team: 4 players (captain included)
         players: {
             type: [
                 {
-                    // Optional for players without a NexusPlay account
                     user: {
                         type: mongoose.Schema.Types.ObjectId,
                         ref: "User",
@@ -73,13 +64,15 @@ const registrationSchema = new mongoose.Schema(
             required: [true, "Players are required"],
             validate: {
                 validator: function (players) {
-                    return Array.isArray(players) && players.length > 0;
+                    return (
+                        Array.isArray(players) &&
+                        players.length > 0
+                    );
                 },
                 message: "At least one player is required",
             },
         },
 
-        // Captain's contact details
         captainContact: {
             whatsapp: {
                 type: String,
@@ -100,7 +93,6 @@ const registrationSchema = new mongoose.Schema(
             },
         },
 
-        // Registration agreements
         agreements: {
             antiCheat: {
                 type: Boolean,
@@ -156,7 +148,6 @@ const registrationSchema = new mongoose.Schema(
     }
 );
 
-// One active registration per captain for a tournament
 registrationSchema.index(
     {
         user: 1,
@@ -170,9 +161,11 @@ registrationSchema.index(
     }
 );
 
-const Registration = mongoose.model(
-    "Registration",
-    registrationSchema
-);
+const Registration =
+    mongoose.models.Registration ||
+    mongoose.model(
+        "Registration",
+        registrationSchema
+    );
 
 export default Registration;
