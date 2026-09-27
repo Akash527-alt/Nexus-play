@@ -123,7 +123,15 @@ export const ParticipantDashboard = () => {
 
   // Earnings will remain 0 until tournament
   // results / prize distribution are implemented.
-  const totalEarnings = 0;
+  const totalEarnings = registrations.reduce((total, registration) => {
+    const prize = registration?.prizeDistribution;
+
+    if (prize && prize.status === "confirmed") {
+      return total + Number(prize.prizeAmount || 0);
+    }
+
+    return total;
+  }, 0);
 
   // Show only a few registrations on dashboard.
   const recentRegistrations = registrations.slice(0, 3);

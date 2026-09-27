@@ -4,6 +4,7 @@ import Tournament from "../models/Tournament.js";
 import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
 import ErrorHandler from "../utils/ErrorHandler.js";
 import User from "../models/user.js";
+import PrizeDistribution from "../models/PrizeDistribution.js";
 
 export const registerParticipant = catchAsyncErrors(async (req, res, next) => {
     const { tournamentId } = req.params;
@@ -349,26 +350,60 @@ export const registerParticipant = catchAsyncErrors(async (req, res, next) => {
     });
 });
 
-export const getMyRegistrations = catchAsyncErrors(async (req, res, next) => {
-    const registrations = await Registration.find({
-        $or: [
-            { user: req.user._id },
-            { "players.user": req.user._id },
-        ],
-    })
-        .populate("user", "name email mobileNumber")
-        .populate("players.user", "name email mobileNumber")
-        .populate("tournament",
-            "title game tournamentType teamSize startDate endDate registrationDeadline venue status tournamentImage entryFee prizePool prizes maxParticipants currentParticipants"
-        )
-        .sort({ createdAt: -1 });
+export const getMyRegistrations = catchAsyncErrors(
+    async (req, res, next) => {
+        const registrations = await Registration.find({
+            $or: [
+                { user: req.user._id },
+                { "players.user": req.user._id },
+            ],
+        })
+            .populate(
+                "tournament",
+                "title game tournamentType startDate endDate venue status entryFee prizePool"
+            )
+            .sort({ createdAt: -1 });
 
-    res.status(200).json({
-        success: true,
-        count: registrations.length,
-        registrations,
-    });
-});
+        const registrationIds = registrations.map(
+            (registration) => registration._id
+        );
+
+        const distributions = await PrizeDistribution.find({
+            captain: req.user._id,
+            registration: { $in: registrationIds },
+            status: "confirmed",
+        }).select(
+            "tournament registration position prizeAmount captain status confirmedAt"
+        );
+
+        const distributionMap = new Map(
+            distributions.map((distribution) => [
+                distribution.registration.toString(),
+                distribution,
+            ])
+        );
+
+        const registrationsWithPrizes = registrations.map(
+            (registration) => {
+                const registrationData = registration.toObject();
+
+                return {
+                    ...registrationData,
+                    prizeDistribution:
+                        distributionMap.get(
+                            registration._id.toString()
+                        ) || null,
+                };
+            }
+        );
+
+        res.status(200).json({
+            success: true,
+            count: registrationsWithPrizes.length,
+            registrations: registrationsWithPrizes,
+        });
+    }
+);
 
 export const getMyRegistration = catchAsyncErrors(async (req, res, next) => {
     const { tournamentId } = req.params;

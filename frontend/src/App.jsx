@@ -68,6 +68,11 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 import { UnauthorizedPage } from "./pages/UnauthorizedPage.jsx";
 
 import { LandingPage } from "./pages/LandingPage.jsx";
+import { HelpCenterPage } from "./pages/HelpCenterPage";
+import { ContactUsPage } from "./pages/ContactUsPage";
+import { PrivacyPolicyPage } from "./pages/PrivacyPolicyPage";
+
+
 
 // Fallback history
 const HistoryPage = () => (
@@ -89,6 +94,9 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/help-center" element={<HelpCenterPage />} />
+              <Route path="/contact-us" element={<ContactUsPage />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicyPage />}/>
               <Route
                 path="/password/reset/:token"
                 element={<ResetPasswordPage />}

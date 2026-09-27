@@ -5,6 +5,7 @@ import {
   Gamepad2,
   Users,
   IndianRupee,
+  Trophy,
 } from "lucide-react";
 import { participantService } from "../../services/participantService";
 
@@ -101,6 +102,7 @@ export const ParticipantHistory = () => {
           <div className="divide-y theme-border">
             {historyData.map((registration) => {
               const tournament = registration.tournament;
+              const prize = registration.prizeDistribution;
 
               if (!tournament) return null;
 
@@ -232,7 +234,7 @@ export const ParticipantHistory = () => {
                   </div>
 
                   {/* Registration Information */}
-                  <div className="mt-5 pt-4 border-t theme-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="mt-5 pt-4 border-t theme-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <p className="theme-subtext text-[10px]">
                       Registered on{" "}
                       <span className="theme-text font-medium">
@@ -240,9 +242,36 @@ export const ParticipantHistory = () => {
                       </span>
                     </p>
 
-                    <span className="text-[10px] text-green-500 font-semibold">
-                      Registration Confirmed
-                    </span>
+                    <div className="flex items-center gap-3">
+                      {prize ? (
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 text-yellow-500 font-semibold text-[10px]">
+                            <Trophy size={14} />
+                            <span>
+                              {prize.position === 1
+                                ? "1st"
+                                : prize.position === 2
+                                  ? "2nd"
+                                  : prize.position === 3
+                                    ? "3rd"
+                                    : `${prize.position}th`}{" "}
+                              Place
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1 text-green-500 font-bold text-[10px]">
+                            <IndianRupee size={12} />
+                            {Number(prize.prizeAmount || 0).toLocaleString(
+                              "en-IN",
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-green-500 font-semibold">
+                          Registration Confirmed
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

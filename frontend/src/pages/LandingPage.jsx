@@ -3,6 +3,8 @@ import HeroSection from "../components/landing/HeroSection";
 import FeaturedTournaments from "../components/landing/FeaturedTournaments";
 import FinalCTA from "../components/landing/FinalCTA";
 import { Link } from "react-router-dom";
+import { FaInstagram, FaDiscord, FaYoutube } from "react-icons/fa";
+import { FaXTwitter } from "react-icons/fa6";
 
 export function LandingPage() {
   return (
@@ -241,37 +243,44 @@ export function LandingPage() {
                 Follow Us
               </h3>
 
-              <div className="mt-3 flex flex-wrap gap-3">
+              <div className="flex gap-4 text-2xl items-center mt-4">
                 <a
-                  href="#"
-                  aria-label="Discord"
-                  className="text-sm text-slate-500 transition hover:text-indigo-400 lg:text-base"
+                  href="https://x.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="X (Twitter)"
                 >
-                  🎮
+                  <FaXTwitter color="#1DA1F2" />
                 </a>
 
+                {/* Instagram */}
                 <a
-                  href="#"
+                  href="https://instagram.com"
+                  target="_blank"
+                  rel="noreferrer"
                   aria-label="Instagram"
-                  className="text-sm text-slate-500 transition hover:text-pink-400 lg:text-base"
                 >
-                  📷
+                  <FaInstagram color="#E1306C" />
                 </a>
 
+                {/* Discord */}
                 <a
-                  href="#"
-                  aria-label="X"
-                  className="text-sm text-slate-500 transition hover:text-sky-400 lg:text-base"
+                  href="https://discord.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Discord"
                 >
-                  𝕏
+                  <FaDiscord color="#5865F2" />
                 </a>
 
+                {/* YouTube */}
                 <a
-                  href="#"
+                  href="https://youtube.com"
+                  target="_blank"
+                  rel="noreferrer"
                   aria-label="YouTube"
-                  className="text-sm text-slate-500 transition hover:text-red-400 lg:text-base"
                 >
-                  ▶
+                  <FaYoutube color="#FF0000" />
                 </a>
               </div>
             </div>
@@ -287,5 +296,3 @@ export function LandingPage() {
     </div>
   );
 }
-
-

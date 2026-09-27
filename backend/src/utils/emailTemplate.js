@@ -1,5 +1,4 @@
-
-export const getResetPasswordTemplate = (username,resetUrl) => `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+export const getResetPasswordTemplate = (username, resetUrl) => `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,9 +6,12 @@ export const getResetPasswordTemplate = (username,resetUrl) => `<!DOCTYPE html P
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
-    <title></title>
+
+    <title>NexusPlay Password Reset</title>
+
     <style type="text/css" rel="stylesheet" media="all">
       @import url("https://fonts.googleapis.com/css?family=Nunito+Sans:400,700&display=swap");
+
       body {
         width: 100% !important;
         height: 100%;
@@ -101,10 +103,6 @@ export const getResetPasswordTemplate = (username,resetUrl) => `<!DOCTYPE html P
         text-align: center;
       }
 
-      .u-margin-bottom-none {
-        margin-bottom: 0;
-      }
-
       .button {
         background-color: #3869d4;
         border-top: 10px solid #3869d4;
@@ -128,151 +126,11 @@ export const getResetPasswordTemplate = (username,resetUrl) => `<!DOCTYPE html P
         border-left: 18px solid #22bc66;
       }
 
-      .button--red {
-        background-color: #ff6136;
-        border-top: 10px solid #ff6136;
-        border-right: 18px solid #ff6136;
-        border-bottom: 10px solid #ff6136;
-        border-left: 18px solid #ff6136;
-      }
-
       @media only screen and (max-width: 500px) {
         .button {
           width: 100% !important;
           text-align: center !important;
         }
-      }
-
-      .attributes {
-        margin: 0 0 21px;
-      }
-
-      .attributes_content {
-        background-color: #f4f4f7;
-        padding: 16px;
-      }
-
-      .attributes_item {
-        padding: 0;
-      }
-
-      .related {
-        width: 100%;
-        margin: 0;
-        padding: 25px 0 0 0;
-        -premailer-width: 100%;
-        -premailer-cellpadding: 0;
-        -premailer-cellspacing: 0;
-      }
-
-      .related_item {
-        padding: 10px 0;
-        color: #cbcccf;
-        font-size: 15px;
-        line-height: 18px;
-      }
-
-      .related_item-title {
-        display: block;
-        margin: 0.5em 0 0;
-      }
-
-      .related_item-thumb {
-        display: block;
-        padding-bottom: 10px;
-      }
-
-      .related_heading {
-        border-top: 1px solid #cbcccf;
-        text-align: center;
-        padding: 25px 0 10px;
-      }
-
-      .discount {
-        width: 100%;
-        margin: 0;
-        padding: 24px;
-        -premailer-width: 100%;
-        -premailer-cellpadding: 0;
-        -premailer-cellspacing: 0;
-        background-color: #f4f4f7;
-        border: 2px dashed #cbcccf;
-      }
-
-      .discount_heading {
-        text-align: center;
-      }
-
-      .discount_body {
-        text-align: center;
-        font-size: 15px;
-      }
-
-      .social {
-        width: auto;
-      }
-
-      .social td {
-        padding: 0;
-        width: auto;
-      }
-
-      .social_icon {
-        height: 20px;
-        margin: 0 8px 10px 8px;
-        padding: 0;
-      }
-
-      .purchase {
-        width: 100%;
-        margin: 0;
-        padding: 35px 0;
-        -premailer-width: 100%;
-        -premailer-cellpadding: 0;
-        -premailer-cellspacing: 0;
-      }
-
-      .purchase_content {
-        width: 100%;
-        margin: 0;
-        padding: 25px 0 0 0;
-        -premailer-width: 100%;
-        -premailer-cellpadding: 0;
-        -premailer-cellspacing: 0;
-      }
-
-      .purchase_item {
-        padding: 10px 0;
-        color: #51545e;
-        font-size: 15px;
-        line-height: 18px;
-      }
-
-      .purchase_heading {
-        padding-bottom: 8px;
-        border-bottom: 1px solid #eaeaec;
-      }
-
-      .purchase_heading p {
-        margin: 0;
-        color: #85878e;
-        font-size: 12px;
-      }
-
-      .purchase_footer {
-        padding-top: 15px;
-        border-top: 1px solid #eaeaec;
-      }
-
-      .purchase_total {
-        margin: 0;
-        text-align: right;
-        font-weight: bold;
-        color: #333333;
-      }
-
-      .purchase_total--label {
-        padding: 0 15px 0 0;
       }
 
       body {
@@ -288,9 +146,6 @@ export const getResetPasswordTemplate = (username,resetUrl) => `<!DOCTYPE html P
         width: 100%;
         margin: 0;
         padding: 0;
-        -premailer-width: 100%;
-        -premailer-cellpadding: 0;
-        -premailer-cellspacing: 0;
         background-color: #f2f4f6;
       }
 
@@ -298,9 +153,6 @@ export const getResetPasswordTemplate = (username,resetUrl) => `<!DOCTYPE html P
         width: 100%;
         margin: 0;
         padding: 0;
-        -premailer-width: 100%;
-        -premailer-cellpadding: 0;
-        -premailer-cellspacing: 0;
       }
 
       .email-masthead {
@@ -308,34 +160,23 @@ export const getResetPasswordTemplate = (username,resetUrl) => `<!DOCTYPE html P
         text-align: center;
       }
 
-      .email-masthead_logo {
-        width: 94px;
-      }
-
       .email-masthead_name {
-        font-size: 16px;
+        font-size: 20px;
         font-weight: bold;
-        color: #a8aaaf;
+        color: #333333;
         text-decoration: none;
-        text-shadow: 0 1px 0 white;
       }
 
       .email-body {
         width: 100%;
         margin: 0;
         padding: 0;
-        -premailer-width: 100%;
-        -premailer-cellpadding: 0;
-        -premailer-cellspacing: 0;
       }
 
       .email-body_inner {
         width: 570px;
         margin: 0 auto;
         padding: 0;
-        -premailer-width: 570px;
-        -premailer-cellpadding: 0;
-        -premailer-cellspacing: 0;
         background-color: #ffffff;
       }
 
@@ -343,9 +184,6 @@ export const getResetPasswordTemplate = (username,resetUrl) => `<!DOCTYPE html P
         width: 570px;
         margin: 0 auto;
         padding: 0;
-        -premailer-width: 570px;
-        -premailer-cellpadding: 0;
-        -premailer-cellspacing: 0;
         text-align: center;
       }
 
@@ -357,9 +195,6 @@ export const getResetPasswordTemplate = (username,resetUrl) => `<!DOCTYPE html P
         width: 100%;
         margin: 30px auto;
         padding: 0;
-        -premailer-width: 100%;
-        -premailer-cellpadding: 0;
-        -premailer-cellspacing: 0;
         text-align: center;
       }
 
@@ -391,6 +226,7 @@ export const getResetPasswordTemplate = (username,resetUrl) => `<!DOCTYPE html P
           background-color: #333333 !important;
           color: #fff !important;
         }
+
         p,
         ul,
         ol,
@@ -398,37 +234,23 @@ export const getResetPasswordTemplate = (username,resetUrl) => `<!DOCTYPE html P
         h1,
         h2,
         h3,
-        span,
-        .purchase_item {
+        span {
           color: #fff !important;
         }
-        .attributes_content,
-        .discount {
-          background-color: #222 !important;
-        }
-        .email-masthead_name {
-          text-shadow: none !important;
-        }
-      }
 
-      :root {
-        color-scheme: light dark;
-        supported-color-schemes: light dark;
+        .email-masthead_name {
+          color: #fff !important;
+        }
       }
     </style>
-    <!--[if mso]>
-      <style type="text/css">
-        .f-fallback {
-          font-family: Arial, sans-serif;
-        }
-      </style>
-    <![endif]-->
   </head>
+
   <body>
-    <span class="preheader"
-      >Use this link to reset your password. The link is only valid for 30
-      minutes.</span
-    >
+    <span class="preheader">
+      Use this link to reset your NexusPlay password. The link is only valid
+      for 30 minutes.
+    </span>
+
     <table
       class="email-wrapper"
       width="100%"
@@ -448,21 +270,17 @@ export const getResetPasswordTemplate = (username,resetUrl) => `<!DOCTYPE html P
             <tr>
               <td class="email-masthead">
                 <a
-                  href="https://shopit.com"
-                  class="f-fallback email-masthead_name"
+                  href="${process.env.FRONTEND_URL}"
+                  class="email-masthead_name"
+                  target="_blank"
                 >
-                  Nexus-play
+                  NexusPlay
                 </a>
               </td>
             </tr>
 
             <tr>
-              <td
-                class="email-body"
-                width="570"
-                cellpadding="0"
-                cellspacing="0"
-              >
+              <td class="email-body" width="570">
                 <table
                   class="email-body_inner"
                   align="center"
@@ -473,15 +291,20 @@ export const getResetPasswordTemplate = (username,resetUrl) => `<!DOCTYPE html P
                 >
                   <tr>
                     <td class="content-cell">
-                      <div class="f-fallback">
+                      <div>
                         <h1>Hi ${username},</h1>
+
                         <p>
-                          You recently requested to reset your password for your
-                          ShopX account. Use the button below to reset it.
-                          <strong
-                            >This password reset is only valid for the next 30
-                            minutes.</strong
-                          >
+                          You recently requested to reset your password for
+                          your NexusPlay account.
+                        </p>
+
+                        <p>
+                          Use the button below to create a new password.
+                          <strong>
+                            This password reset link is only valid for the next
+                            30 minutes.
+                          </strong>
                         </p>
 
                         <table
@@ -505,34 +328,42 @@ export const getResetPasswordTemplate = (username,resetUrl) => `<!DOCTYPE html P
                                   <td align="center">
                                     <a
                                       href="${resetUrl}"
-                                      class="f-fallback button button--green"
+                                      class="button button--green"
                                       target="_blank"
-                                      >Reset your password</a
                                     >
+                                      Reset Your Password
+                                    </a>
                                   </td>
                                 </tr>
                               </table>
                             </td>
                           </tr>
                         </table>
+
                         <p>
-                          If you did not request a password reset, please ignore
-                          this email or
-                          <a href="{{support_url}}">contact support</a> if you
-                          have questions.
+                          If you did not request a password reset, you can
+                          safely ignore this email. Your password will remain
+                          unchanged.
                         </p>
-                        <p>Thanks, <br />The Nexus-play team</p>
+
+                        <p>
+                          Thanks,<br />
+                          The NexusPlay Team
+                        </p>
 
                         <table class="body-sub" role="presentation">
                           <tr>
                             <td>
-                              <p class="f-fallback sub">
-                                If you’re having trouble with the button above,
+                              <p class="sub">
+                                If you're having trouble with the button above,
                                 copy and paste the URL below into your web
                                 browser.
                               </p>
-                              <p class="f-fallback sub">
-                                <a href="${resetUrl}">${resetUrl}</a>
+
+                              <p class="sub">
+                                <a href="${resetUrl}">
+                                  ${resetUrl}
+                                </a>
                               </p>
                             </td>
                           </tr>
@@ -543,6 +374,7 @@ export const getResetPasswordTemplate = (username,resetUrl) => `<!DOCTYPE html P
                 </table>
               </td>
             </tr>
+
             <tr>
               <td>
                 <table
@@ -555,9 +387,12 @@ export const getResetPasswordTemplate = (username,resetUrl) => `<!DOCTYPE html P
                 >
                   <tr>
                     <td class="content-cell" align="center">
-                      <p class="f-fallback sub align-center">
-                        ShopX
-                        <br />1234 Street Rd. <br />Suite 1234
+                      <p class="sub align-center">
+                        NexusPlay
+                        <br />
+                        Tournament Management Platform
+                        <br />
+                        Compete. Connect. Conquer.
                       </p>
                     </td>
                   </tr>
