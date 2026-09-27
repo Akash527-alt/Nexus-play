@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import Tournament from "../models/tournament.js";
+import Tournament from "../models/Tournament.js";
 
 const updateTournamentStatuses = async () => {
     try {

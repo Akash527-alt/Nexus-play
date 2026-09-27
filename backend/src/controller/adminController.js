@@ -1,6 +1,6 @@
 import User from "../models/user.js";
 import Organizer from "../models/organizer.js";
-import Tournament from "../models/tournament.js";
+import Tournament from "../models/Tournament.js";
 import Sponsor from "../models/sponsor.js";
 import Sponsorship from "../models/sponsorship.js";
 import Payment from "../models/payment.js";

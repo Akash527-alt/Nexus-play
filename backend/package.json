@@ -27,6 +27,7 @@
     "razorpay": "^2.9.8"
   },
   "devDependencies": {
+    "eslint": "^10.11.0",
     "nodemon": "^3.1.14"
   }
 }
