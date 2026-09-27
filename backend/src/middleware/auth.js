@@ -3,25 +3,29 @@ import ErrorHandler from "../utils/ErrorHandler.js";
 import catchAsyncErrors from "./catchAsyncErrors.js";
 import jwt from 'jsonwebtoken'
 
-export const isAuthenticatedUser = catchAsyncErrors(async(req,res,next) =>{
-    const {token} = req.cookies;
-    if(!token){
-       return next(new ErrorHandler("Please login first to access resource",401));
+export const isAuthenticatedUser = catchAsyncErrors(async (req, res, next) => {
+    let token = req.cookies.token;
+
+    if (!token && req.headers.authorization?.startsWith("Bearer ")) {
+        token = req.headers.authorization.split(" ")[1];
     }
-    
-    const decodedData = jwt.verify(token,process.env.JWT_SECRET);
 
+    if (!token) {
+        return next(
+            new ErrorHandler("Please login first to access resource", 401)
+        );
+    }
 
-    // console.log(await User.findById(decodedData.id));
+    const decodedData = jwt.verify(token, process.env.JWT_SECRET);
 
     req.user = await User.findById(decodedData.id);
 
     if (!req.user) {
-        return next(new ErrorHandler("User no longer exits",401));
+        return next(new ErrorHandler("User no longer exists", 401));
     }
 
-    next(); 
-})
+    next();
+});
 
 
 export const authorizeRoles = (...roles) => {

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { tournamentService } from "../services/tournamentService";
+import { useAuth } from "./AuthContext";
 
 const TournamentContext = createContext();
 
@@ -7,6 +8,7 @@ export function TournamentProvider({ children }) {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { user, loading: authLoading } = useAuth();
 
   // Read local storage tournaments helper
   const getLocalTournaments = () => {
@@ -26,11 +28,14 @@ export function TournamentProvider({ children }) {
 
     try {
       const response = await tournamentService.getMy();
-      const apiList = response?.tournaments || response?.data || (Array.isArray(response) ? response : []);
-      
+      const apiList =
+        response?.tournaments ||
+        response?.data ||
+        (Array.isArray(response) ? response : []);
+
       // Combine API and local items avoiding duplicates by ID
       const combinedMap = new Map();
-      [...localData, ...apiList].forEach(item => {
+      [...localData, ...apiList].forEach((item) => {
         const key = item.id || item._id;
         if (key && !combinedMap.has(key)) {
           combinedMap.set(key, item);
@@ -53,7 +58,9 @@ export function TournamentProvider({ children }) {
   // Instant add tournament helper (Updates React State + Local Storage synchronously)
   const addTournament = (newItem) => {
     setTournaments((prev) => {
-      const filteredPrev = prev.filter(t => (t.id || t._id) !== (newItem.id || newItem._id));
+      const filteredPrev = prev.filter(
+        (t) => (t.id || t._id) !== (newItem.id || newItem._id),
+      );
       const updated = [newItem, ...filteredPrev];
       localStorage.setItem("nexus_tournaments", JSON.stringify(updated));
       return updated;
@@ -61,8 +68,12 @@ export function TournamentProvider({ children }) {
   };
 
   useEffect(() => {
-    fetchMyTournaments();
-  }, []);
+    if (authLoading) return;
+
+    if (user?.role === "organizer") {
+      fetchMyTournaments();
+    }
+  }, [user, authLoading]);
 
   const value = {
     tournaments,
@@ -70,7 +81,7 @@ export function TournamentProvider({ children }) {
     error,
     addTournament,
     fetchMyTournaments,
-    setTournaments
+    setTournaments,
   };
 
   return (
