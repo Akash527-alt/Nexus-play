@@ -1,6 +1,6 @@
 import Sponsor from "../models/sponsor.js";
 import Sponsorship from "../models/sponsorship.js";
-import Tournament from "../models/tournament.js";
+import Tournament from "../models/Tournament.js";
 import Organizer from "../models/organizer.js";
 import Payment from "../models/payment.js";
 import catchAsyncErrors from "../middleware/catchAsyncErrors.js";

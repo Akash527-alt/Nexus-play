@@ -14,6 +14,7 @@ const createSuperAdmin = async () => {
 
         // Check if superadmin already exists
         const existingSuperAdmin = await User.findOne({
+            email: process.env.SUPERADMIN_EMAIL,
             role: "superadmin",
         });
 

@@ -51,6 +51,31 @@ export const tournamentService = {
 
     return response.data;
   },
+
+  getPrizeDistribution: async (tournamentId) => {
+    const response = await api.get(
+      `/prize-distributions/tournaments/${tournamentId}`
+    );
+
+    return response.data;
+  },
+
+  confirmPrizeWinner: async (tournamentId, data) => {
+    const response = await api.post(
+      `/prize-distributions/tournaments/${tournamentId}`,
+      data
+    );
+
+    return response.data;
+  },
+
+  removePrizeWinner: async (tournamentId, distributionId) => {
+    const response = await api.delete(
+      `/prize-distributions/tournaments/${tournamentId}/${distributionId}`
+    );
+
+    return response.data;
+  },
 };
 
 export default tournamentService;

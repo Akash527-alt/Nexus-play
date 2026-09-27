@@ -6,8 +6,8 @@ import {
   Calendar,
   MapPin,
   Users,
-  Trophy,
   Clock,
+  Trophy,
   ShieldAlert,
   UserCheck,
   Gamepad2,
@@ -257,6 +257,18 @@ export function TournamentDetailPage() {
           <UserCheck className="w-4 h-4" />
           Registered Teams
         </button>
+
+        {tournament.status === "completed" && (
+          <button
+            onClick={() =>
+              navigate(`/organizer/tournaments/${tournament._id}/prizes`)
+            }
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition"
+          >
+            <Trophy className="w-4 h-4" />
+            Prize Distribution
+          </button>
+        )}
       </div>
 
       <div className="theme-card rounded-2xl border overflow-hidden shadow-sm">

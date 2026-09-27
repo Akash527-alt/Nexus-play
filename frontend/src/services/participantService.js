@@ -31,10 +31,22 @@ export const participantService = {
     return response.data;
   },
 
-  registerTournament: async (tournamentId, registrationData) => {
+  createPaymentOrder: async (tournamentId, registrationData) => {
     const response = await api.post(
-      `/tournaments/${tournamentId}/register`,
-      registrationData
+      "/payments/create-order",
+      {
+        tournamentId,
+        ...registrationData,
+      }
+    );
+
+    return response.data;
+  },
+
+  verifyPayment: async (paymentData) => {
+    const response = await api.post(
+      "/payments/verify",
+      paymentData
     );
 
     return response.data;

@@ -3,10 +3,17 @@ import Registration from "../models/Registration.js";
 import Tournament from "../models/Tournament.js";
 import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
 import ErrorHandler from "../utils/ErrorHandler.js";
+import User from "../models/user.js";
 
 export const registerParticipant = catchAsyncErrors(async (req, res, next) => {
     const { tournamentId } = req.params;
-    const { registrationType, teamName, players, captainContact, agreements } = req.body;
+    const {
+        registrationType,
+        teamName,
+        players,
+        captainContact,
+        agreements,
+    } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(tournamentId)) {
         return next(new ErrorHandler("Invalid tournament ID", 400));
@@ -19,84 +26,228 @@ export const registerParticipant = catchAsyncErrors(async (req, res, next) => {
     }
 
     if (tournament.status !== "published") {
-        return next(new ErrorHandler("Registration is not available for this tournament", 400));
+        return next(
+            new ErrorHandler(
+                "Registration is not available for this tournament",
+                400
+            )
+        );
     }
 
     const now = new Date();
 
-    if (tournament.registrationDeadline && now >= new Date(tournament.registrationDeadline)) {
-        return next(new ErrorHandler("Registration deadline has already passed", 400));
+    if (
+        tournament.registrationDeadline &&
+        now >= new Date(tournament.registrationDeadline)
+    ) {
+        return next(
+            new ErrorHandler(
+                "Registration deadline has already passed",
+                400
+            )
+        );
     }
 
-    if (tournament.startDate && now >= new Date(tournament.startDate)) {
-        return next(new ErrorHandler("Registration is closed because the tournament has started", 400));
+    if (
+        tournament.startDate &&
+        now >= new Date(tournament.startDate)
+    ) {
+        return next(
+            new ErrorHandler(
+                "Registration is closed because the tournament has started",
+                400
+            )
+        );
     }
 
     if (!["solo", "team"].includes(registrationType)) {
-        return next(new ErrorHandler("Registration type must be either solo or team", 400));
+        return next(
+            new ErrorHandler(
+                "Registration type must be either solo or team",
+                400
+            )
+        );
     }
 
     if (registrationType !== tournament.tournamentType) {
-        return next(new ErrorHandler(`This tournament only accepts ${tournament.tournamentType} registrations`, 400));
+        return next(
+            new ErrorHandler(
+                `This tournament only accepts ${tournament.tournamentType} registrations`,
+                400
+            )
+        );
     }
 
     if (!teamName || teamName.trim() === "") {
-        return next(new ErrorHandler("Clan name is required for registration", 400));
+        return next(
+            new ErrorHandler(
+                "Clan name is required for registration",
+                400
+            )
+        );
     }
 
     if (!Array.isArray(players) || players.length === 0) {
-        return next(new ErrorHandler("At least one player is required", 400));
+        return next(
+            new ErrorHandler(
+                "At least one player is required",
+                400
+            )
+        );
     }
 
-    const requiredPlayers = registrationType === "solo" ? 1 : Number(tournament.teamSize);
+    const requiredPlayers =
+        registrationType === "solo"
+            ? 1
+            : Number(tournament.teamSize);
 
     if (!requiredPlayers || requiredPlayers < 1) {
-        return next(new ErrorHandler("Invalid team size configured for this tournament", 400));
+        return next(
+            new ErrorHandler(
+                "Invalid team size configured for this tournament",
+                400
+            )
+        );
     }
 
     if (players.length !== requiredPlayers) {
-        return next(new ErrorHandler(
-            registrationType === "solo"
-                ? "Solo registration must contain exactly one player"
-                : `Team registration must contain exactly ${requiredPlayers} players, including the captain`,
-            400
-        ));
+        return next(
+            new ErrorHandler(
+                registrationType === "solo"
+                    ? "Solo registration must contain exactly one player"
+                    : `Team registration must contain exactly ${requiredPlayers} players, including the captain`,
+                400
+            )
+        );
     }
 
     for (let i = 0; i < players.length; i++) {
         const player = players[i];
 
-        if (!player || !player.fullName || !player.gameUid || !player.email || !player.phone) {
-            return next(new ErrorHandler(`Player ${i + 1} must have fullName, gameUid, email and phone`, 400));
+        if (
+            !player ||
+            !player.fullName ||
+            !player.gameUid ||
+            !player.email ||
+            !player.phone
+        ) {
+            return next(
+                new ErrorHandler(
+                    `Player ${i + 1} must have fullName, gameUid, email and phone`,
+                    400
+                )
+            );
         }
+
+        player.fullName = player.fullName.trim();
+        player.gameUid = player.gameUid.trim();
+        player.email = player.email.trim().toLowerCase();
+        player.phone = player.phone.trim();
+    }
+
+    const playerEmails = players.map((player) => player.email);
+
+    const uniquePlayerEmails = new Set(playerEmails);
+
+    if (uniquePlayerEmails.size !== playerEmails.length) {
+        return next(
+            new ErrorHandler(
+                "The same email cannot be used for multiple players",
+                400
+            )
+        );
+    }
+
+    const nexusUsers = await User.find({
+        email: { $in: playerEmails },
+        role: "user",
+    }).select("_id email");
+
+    const usersByEmail = new Map(
+        nexusUsers.map((user) => [
+            user.email.toLowerCase(),
+            user._id,
+        ])
+    );
+
+    for (const player of players) {
+        player.user =
+            usersByEmail.get(player.email) || null;
     }
 
     const loggedInUserId = req.user._id.toString();
 
-    const captainIncluded = players.some((player) => player.user && player.user.toString() === loggedInUserId);
+    const captainIncluded = players.some(
+        (player) =>
+            player.user &&
+            player.user.toString() === loggedInUserId
+    );
 
     if (!captainIncluded) {
-        return next(new ErrorHandler("The logged-in user must be included as the captain", 400));
+        return next(
+            new ErrorHandler(
+                "The logged-in user must be included as the captain",
+                400
+            )
+        );
     }
 
-    const linkedUserIds = players.filter((player) => player.user).map((player) => player.user.toString());
+    const captainCount = players.filter(
+        (player) =>
+            player.user &&
+            player.user.toString() === loggedInUserId
+    ).length;
+
+    if (captainCount !== 1) {
+        return next(
+            new ErrorHandler(
+                "The logged-in user can only be included once in the team",
+                400
+            )
+        );
+    }
+
+    const linkedUserIds = players
+        .filter((player) => player.user)
+        .map((player) => player.user.toString());
 
     const uniqueUserIds = new Set(linkedUserIds);
 
     if (uniqueUserIds.size !== linkedUserIds.length) {
-        return next(new ErrorHandler("The same NexusPlay account cannot be used for multiple players", 400));
+        return next(
+            new ErrorHandler(
+                "The same NexusPlay account cannot be used for multiple players",
+                400
+            )
+        );
     }
 
-    const gameUids = players.map((player) => player.gameUid.trim().toLowerCase());
+    const gameUids = players.map((player) =>
+        player.gameUid.trim().toLowerCase()
+    );
 
     const uniqueGameUids = new Set(gameUids);
 
     if (uniqueGameUids.size !== gameUids.length) {
-        return next(new ErrorHandler("Duplicate game UID / IGN is not allowed", 400));
+        return next(
+            new ErrorHandler(
+                "Duplicate game UID / IGN is not allowed",
+                400
+            )
+        );
     }
 
-    if (!captainContact || !captainContact.whatsapp || captainContact.whatsapp.trim() === "") {
-        return next(new ErrorHandler("WhatsApp contact is required", 400));
+    if (
+        !captainContact ||
+        !captainContact.whatsapp ||
+        captainContact.whatsapp.trim() === ""
+    ) {
+        return next(
+            new ErrorHandler(
+                "WhatsApp contact is required",
+                400
+            )
+        );
     }
 
     const requiredAgreements = [
@@ -111,7 +262,12 @@ export const registerParticipant = catchAsyncErrors(async (req, res, next) => {
 
     for (const agreement of requiredAgreements) {
         if (!agreements || agreements[agreement] !== true) {
-            return next(new ErrorHandler(`You must accept the ${agreement} agreement`, 400));
+            return next(
+                new ErrorHandler(
+                    `You must accept the ${agreement} agreement`,
+                    400
+                )
+            );
         }
     }
 
@@ -122,23 +278,54 @@ export const registerParticipant = catchAsyncErrors(async (req, res, next) => {
     });
 
     if (existingRegistration) {
-        return next(new ErrorHandler("You are already registered for this tournament", 400));
+        return next(
+            new ErrorHandler(
+                "You are already registered for this tournament",
+                400
+            )
+        );
     }
 
     if (linkedUserIds.length > 0) {
         const existingPlayerRegistration = await Registration.findOne({
             tournament: tournamentId,
             status: "registered",
-            "players.user": { $in: linkedUserIds },
-        });
+            "players.user": {
+                $in: linkedUserIds,
+            },
+        }).populate("players.user", "name email");
 
         if (existingPlayerRegistration) {
-            return next(new ErrorHandler("One or more players are already registered for this tournament", 400));
+            const alreadyRegisteredPlayers =
+                existingPlayerRegistration.players
+                    .filter(
+                        (player) =>
+                            player.user &&
+                            linkedUserIds.includes(
+                                player.user._id.toString()
+                            )
+                    )
+                    .map((player) => player.email);
+
+            return next(
+                new ErrorHandler(
+                    `player with  ${alreadyRegisteredPlayers.join(", ")} is already registered for this tournament`,
+                    400
+                )
+            );
         }
     }
 
-    if (tournament.currentParticipants >= tournament.maxParticipants) {
-        return next(new ErrorHandler("Tournament registration is full", 400));
+    if (
+        tournament.currentParticipants >=
+        tournament.maxParticipants
+    ) {
+        return next(
+            new ErrorHandler(
+                "Tournament registration is full",
+                400
+            )
+        );
     }
 
     const registration = await Registration.create({
@@ -163,8 +350,17 @@ export const registerParticipant = catchAsyncErrors(async (req, res, next) => {
 });
 
 export const getMyRegistrations = catchAsyncErrors(async (req, res, next) => {
-    const registrations = await Registration.find({ user: req.user._id })
-        .populate("tournament", "title game tournamentType teamSize startDate endDate registrationDeadline venue status tournamentImage")
+    const registrations = await Registration.find({
+        $or: [
+            { user: req.user._id },
+            { "players.user": req.user._id },
+        ],
+    })
+        .populate("user", "name email mobileNumber")
+        .populate("players.user", "name email mobileNumber")
+        .populate("tournament",
+            "title game tournamentType teamSize startDate endDate registrationDeadline venue status tournamentImage entryFee prizePool prizes maxParticipants currentParticipants"
+        )
         .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -182,13 +378,33 @@ export const getMyRegistration = catchAsyncErrors(async (req, res, next) => {
     }
 
     const registration = await Registration.findOne({
-        user: req.user._id,
         tournament: tournamentId,
         status: "registered",
-    }).populate("tournament", "title game tournamentType teamSize startDate endDate registrationDeadline venue status tournamentImage");
+        $or: [
+            { user: req.user._id },
+            { "players.user": req.user._id },
+        ],
+    })
+        .populate(
+            "user",
+            "name email mobileNumber"
+        )
+        .populate(
+            "players.user",
+            "name email mobileNumber"
+        )
+        .populate(
+            "tournament",
+            "title game tournamentType teamSize startDate endDate registrationDeadline venue status tournamentImage entryFee prizePool prizes maxParticipants currentParticipants"
+        );
 
     if (!registration) {
-        return next(new ErrorHandler("You are not registered for this tournament", 404));
+        return next(
+            new ErrorHandler(
+                "You are not registered for this tournament",
+                404
+            )
+        );
     }
 
     res.status(200).json({

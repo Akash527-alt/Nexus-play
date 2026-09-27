@@ -33,6 +33,7 @@ import { ProfilePage } from "./pages/organizer/ProfilePage";
 import { SettingsPage } from "./pages/organizer/SettingsPage";
 import { SponsorsPage } from "./pages/organizer/SponsorPage";
 import { RegisteredTeamsPage } from "./pages/organizer/RegisteredTeamPage.jsx";
+import { PrizeDistributionPage } from "./pages/organizer/PrizeDistributionPage";
 
 // Participant Pages
 import { ParticipantDashboard } from "./pages/participant/ParticipantDashboard";
@@ -169,6 +170,10 @@ function App() {
                           element={<TournamentDetailPage />}
                         />
                         <Route
+                          path="tournaments/:id/prizes"
+                          element={<PrizeDistributionPage />}
+                        />
+                        <Route
                           path="/tournaments/:id/participants"
                           element={<RegisteredTeamsPage />}
                         />
@@ -285,7 +290,7 @@ function App() {
               />
 
               {/* ROOT & FALLBACK */}
-              <Route path="/" element={<LandingPage replace/>} />
+              <Route path="/" element={<LandingPage replace />} />
               <Route path="/unauthorized" element={<UnauthorizedPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>

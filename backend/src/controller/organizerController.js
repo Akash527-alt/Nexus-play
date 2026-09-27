@@ -1,7 +1,7 @@
 import Organizer from "../models/organizer.js";
 import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
 import ErrorHandler from "../utils/ErrorHandler.js";
-import Tournament from "../models/tournament.js";
+import Tournament from "../models/Tournament.js";
 
 export const createOrganizerProfile = catchAsyncErrors(
     async (req, res, next) => {

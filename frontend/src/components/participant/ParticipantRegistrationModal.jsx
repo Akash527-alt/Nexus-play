@@ -67,6 +67,23 @@ export function ParticipantRegistrationModal({
 
   const [formData, setFormData] = useState(createFormData);
 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+
+      const script = document.createElement("script");
+
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+
+      document.body.appendChild(script);
+    });
+  };
+
   useEffect(() => {
     if (!isOpen || !tournament || !user) {
       return;
@@ -348,28 +365,105 @@ export function ParticipantRegistrationModal({
         },
       };
 
-      await participantService.registerTournament(
+      const scriptLoaded = await loadRazorpayScript();
+
+      if (!scriptLoaded) {
+        toast.error("Unable to load Razorpay. Please try again.");
+        return;
+      }
+
+      const orderResponse = await participantService.createPaymentOrder(
         tournamentId,
         registrationData,
       );
 
-      toast.success("Registration completed successfully!");
+      const orderData = orderResponse?.data || orderResponse;
 
-      if (onSuccess) {
-        await onSuccess();
-      }
+      const options = {
+        key: orderData.key,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "NexusPlay",
+        description: `Registration for ${tournamentTitle}`,
+        order_id: orderData.orderId,
 
-      onClose();
+        handler: async (response) => {
+          try {
+            const verificationResponse = await participantService.verifyPayment(
+              {
+                paymentId: orderData.paymentId,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              },
+            );
+
+            const verifiedData =
+              verificationResponse?.data || verificationResponse;
+
+            if (verifiedData?.success) {
+              toast.success("Payment successful and registration completed!");
+
+              if (onSuccess) {
+                await onSuccess();
+              }
+
+              onClose();
+            }
+          } catch (error) {
+            console.error("Payment verification error:", error);
+
+            const message =
+              error?.response?.data?.message ||
+              error?.response?.data?.error ||
+              "Payment was successful, but registration verification failed.";
+
+            toast.error(message);
+          } finally {
+            setIsSubmitting(false);
+          }
+        },
+
+        modal: {
+          ondismiss: () => {
+            setIsSubmitting(false);
+            toast.info("Payment cancelled.");
+          },
+        },
+
+        prefill: {
+          name: formData.captainName,
+          email: formData.captainEmail,
+          contact: formData.captainPhone.replace(/\D/g, ""),
+        },
+
+        theme: {
+          color: "#4f46e5",
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+
+      razorpay.on("payment.failed", (response) => {
+        console.error("Razorpay payment failed:", response.error);
+
+        toast.error(
+          response?.error?.description || "Payment failed. Please try again.",
+        );
+
+        setIsSubmitting(false);
+      });
+
+      razorpay.open();
     } catch (error) {
-      console.error("Tournament registration error:", error);
+      console.error("Tournament payment error:", error);
 
       const message =
         error?.response?.data?.message ||
         error?.response?.data?.error ||
-        "Registration failed. Please try again.";
+        "Unable to start payment. Please try again.";
 
       toast.error(message);
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -891,7 +985,11 @@ export function ParticipantRegistrationModal({
               >
                 <CheckCircle2 className="w-4 h-4" />
 
-                {isSubmitting ? "Submitting..." : "Submit Registration"}
+                {isSubmitting
+                  ? "Processing..."
+                  : entryFee > 0
+                    ? `Pay ₹${entryFee.toLocaleString("en-IN")} & Register`
+                    : "Complete Registration"}
               </button>
             </div>
           </div>

@@ -84,13 +84,8 @@ export function SponsorsPage() {
   // STATISTICS
   // ============================================================
 
-  const totalApprovedAmount = sponsorships
-    .filter(
-      (sponsorship) =>
-        sponsorship.status === "approved" ||
-        sponsorship.status === "active" ||
-        sponsorship.status === "completed",
-    )
+  const totalPaidAmount = sponsorships
+    .filter((sponsorship) => sponsorship.paymentStatus === "paid")
     .reduce((sum, sponsorship) => sum + Number(sponsorship.amount || 0), 0);
 
   const pendingCount = sponsorships.filter(
@@ -159,7 +154,7 @@ export function SponsorsPage() {
           </div>
 
           <p className="text-2xl font-black text-emerald-400 mt-2">
-            ₹{totalApprovedAmount.toLocaleString("en-IN")}
+            ₹{totalPaidAmount.toLocaleString("en-IN")}
           </p>
 
           <p className="text-[11px] theme-subtext mt-1">

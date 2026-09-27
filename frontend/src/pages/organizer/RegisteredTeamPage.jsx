@@ -213,9 +213,7 @@ export function RegisteredTeamsPage() {
               ? registration.players
               : [];
 
-            const captain =
-              players.find((player) => player.user) ||
-              players[0];
+            const captain = registration?.user;
 
             return (
               <div
