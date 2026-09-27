@@ -22,13 +22,13 @@ async function startServer() {
 
         // Seed root Super Admin if not present
         try {
-            const adminEmail = "admin@nexusplay.gg";
+            const adminEmail =  process.env.SUPERADMIN_EMAIL;
             const adminUser = await User.findOne({ email: adminEmail.toLowerCase() });
             if (!adminUser) {
                 await User.create({
                     name: "Super Admin Root",
                     email: adminEmail.toLowerCase(),
-                    password: "admin123",
+                    password: process.env.SUPERADMIN_PASSWORD,
                     role: "superadmin",
                 });
                 console.log("Root Super Admin account initialized: admin@nexusplay.gg / admin123");
